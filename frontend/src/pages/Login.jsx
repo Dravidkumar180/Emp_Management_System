@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Input from '../components/common/Input';
-import Button from '../components/common/Button';
+import { useTheme } from '../context/ThemeContext';
+import ThemeToggle from '../components/common/ThemeToggle';
 import './Login.css';
 
 const Login = () => {
@@ -21,11 +21,6 @@ const Login = () => {
       return;
     }
     
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
-    
     const success = await login(email, password);
     if (success) {
       navigate('/dashboard');
@@ -36,49 +31,55 @@ const Login = () => {
 
   return (
     <div className="login-container">
+      <div className="theme-toggle-absolute">
+        <ThemeToggle />
+      </div>
       <div className="login-card">
         <div className="login-header">
           <div className="logo">🏢</div>
-          <h1>EMP MANAGE</h1>
-          <p>Enterprise Employee Management System</p>
+          <h1>Welcome Back!</h1>
+          <p>Login to your account</p>
         </div>
         
         <form onSubmit={handleSubmit}>
-          <Input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            label="Email Address"
-            icon="📧"
-            disabled={loading}
-          />
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+          </div>
           
-          <Input
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            label="Password"
-            icon="🔒"
-            disabled={loading}
-          />
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-options">
+            <label className="checkbox">
+              <input type="checkbox" /> Remember me
+            </label>
+            <a href="#" className="forgot">Forgot password?</a>
+          </div>
           
           {error && <div className="error-message">{error}</div>}
           
-          <Button 
-            type="submit" 
-            variant="primary" 
-            fullWidth
-            disabled={loading}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </Button>
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? 'Logging in...' : 'Log in'}
+          </button>
         </form>
         
         <div className="login-footer">
-          <p className="demo-hint">Demo Credentials: Any email & password works</p>
-          <p className="demo-hint">Try: admin@example.com / any password</p>
+          <p>Don't have an account? <a href="#">Sign up</a></p>
         </div>
       </div>
     </div>

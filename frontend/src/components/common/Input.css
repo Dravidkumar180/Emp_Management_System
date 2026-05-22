@@ -11,6 +11,11 @@
   font-weight: 500;
 }
 
+.required {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
 .input-wrapper {
   position: relative;
   width: 100%;
@@ -18,25 +23,25 @@
 
 .input-icon {
   position: absolute;
-  left: 0.75rem;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.125rem;
+  font-size: 1rem;
   color: #9ca3af;
 }
 
 .input-field {
   width: 100%;
-  padding: 0.625rem 0.75rem;
+  padding: 10px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 14px;
   transition: all 0.2s;
   background: white;
 }
 
 .input-field.with-icon {
-  padding-left: 2.5rem;
+  padding-left: 36px;
 }
 
 .input-field:focus {
@@ -49,6 +54,10 @@
   border-color: #ef4444;
 }
 
+.input-field.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
 .input-field:disabled {
   background: #f9fafb;
   cursor: not-allowed;
@@ -56,7 +65,7 @@
 
 .input-error {
   color: #ef4444;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
+  font-size: 12px;
+  margin-top: 4px;
   display: block;
 }

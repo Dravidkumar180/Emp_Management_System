@@ -18,11 +18,7 @@ export const AuthProvider = ({ children }) => {
     return new Promise((resolve) => {
       setTimeout(() => {
         if (email && password) {
-          const userData = { 
-            email, 
-            name: email.split('@')[0],
-            role: 'Admin'
-          };
+          const userData = { email, name: email.split('@')[0], role: 'Admin' };
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
           resolve(true);
@@ -30,7 +26,7 @@ export const AuthProvider = ({ children }) => {
           resolve(false);
         }
         setLoading(false);
-      }, 1000);
+      }, 800);
     });
   };
 

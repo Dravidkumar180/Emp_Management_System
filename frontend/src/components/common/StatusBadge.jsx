@@ -1,14 +1,14 @@
 import React from 'react';
-import './Button.css'; // Reusing Button.css for badge styles
+import './StatusBadge.css';
 
 const StatusBadge = ({ status }) => {
   const getStatusClass = () => {
-    switch(status) {
-      case 'Active': return 'status-active';
-      case 'On Leave': return 'status-leave';
-      case 'Remote': return 'status-remote';
-      case 'Probation': return 'status-probation';
-      default: return 'status-inactive';
+    switch(status?.toLowerCase()) {
+      case 'active': return 'status-active';
+      case 'on leave': return 'status-leave';
+      case 'remote': return 'status-remote';
+      case 'inactive': return 'status-inactive';
+      default: return 'status-active';
     }
   };
 

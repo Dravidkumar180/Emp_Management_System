@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import Input from '../components/common/Input';
-import StatCard from '../components/common/StatCard';
-import StatusBadge from '../components/common/StatusBadge';
 import { fetchEmployees } from '../services/api';
 import './Employees.css';
 
@@ -12,241 +8,251 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState('name');
-  const [sortDirection, setSortDirection] = useState('asc');
-  
-  const itemsPerPage = 5;
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    name: '',
+    email: '',
+    role: '',
+    department: '',
+    status: 'Active'
+  });
 
   useEffect(() => {
-    loadEmployees();
+    fetchEmployees().then(data => {
+      setEmployees(data);
+      setFilteredEmployees(data);
+      setLoading(false);
+    });
   }, []);
 
   useEffect(() => {
-    filterAndSortEmployees();
-  }, [searchTerm, departmentFilter, statusFilter, employees, sortField, sortDirection]);
-
-  const loadEmployees = async () => {
-    try {
-      const data = await fetchEmployees();
-      setEmployees(data);
-      setFilteredEmployees(data);
-    } catch (error) {
-      console.error('Error loading employees:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAndSortEmployees = () => {
-    let filtered = [...employees];
-    
+    let filtered = employees;
     if (searchTerm) {
-      filtered = filtered.filter(emp => 
+      filtered = filtered.filter(emp =>
         emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.username.toLowerCase().includes(searchTerm.toLowerCase())
+        emp.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
     if (departmentFilter) {
       filtered = filtered.filter(emp => emp.department === departmentFilter);
     }
-    
-    if (statusFilter) {
-      filtered = filtered.filter(emp => emp.status === statusFilter);
-    }
-    
-    // Sorting
-    filtered.sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
-      
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
-      }
-      
-      if (sortDirection === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
-    
     setFilteredEmployees(filtered);
-    setCurrentPage(1);
-  };
+  }, [searchTerm, departmentFilter, employees]);
 
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
+  const departments = ['All Departments', ...new Set(employees.map(emp => emp.department))];
+  const roles = ['Software Engineer', 'Product Manager', 'HR Manager', 'UI/UX Designer', 'Data Scientist', 'QA Engineer'];
+
+  const handleAddEmployee = () => {
+    if (newEmployee.name && newEmployee.email) {
+      const employee = {
+        id: employees.length + 1,
+        ...newEmployee,
+        username: newEmployee.name.toLowerCase().replace(' ', '.'),
+        phone: '+1 (555) 000-0000',
+        company: 'New Company',
+        joinDate: new Date().toISOString().split('T')[0],
+        location: 'New York',
+        avatar: newEmployee.name.charAt(0)
+      };
+      setEmployees([employee, ...employees]);
+      setFilteredEmployees([employee, ...filteredEmployees]);
+      setShowAddModal(false);
+      setNewEmployee({
+        name: '',
+        email: '',
+        role: '',
+        department: '',
+        status: 'Active'
+      });
     }
   };
 
-  const paginatedEmployees = filteredEmployees.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-  const departments = [...new Set(employees.map(emp => emp.department))];
-  const statuses = [...new Set(employees.map(emp => emp.status))];
+  if (loading) {
+    return (
+      <div className="employees-loading">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
 
   return (
-    <DashboardLayout>
-      <div className="employees-page">
-        <div className="page-header">
-          <div>
-            <h1>Employees</h1>
-            <p>Manage and view all employees</p>
-          </div>
-          <button className="btn-primary">+ Add New Employee</button>
+    <div className="employees-page">
+      <div className="page-header">
+        <div>
+          <h1>Employees</h1>
+          <p className="page-description">Manage your team members and their account permissions here.</p>
         </div>
+        <button className="add-employee-btn" onClick={() => setShowAddModal(true)}>
+          + Add Employee
+        </button>
+      </div>
 
-        <div className="stats-row">
-          <StatCard title="Total Employees" value={employees.length} icon="👥" color="#4f46e5" />
-          <StatCard title="Active" value={employees.filter(e => e.status === 'Active').length} icon="✅" color="#10b981" />
-          <StatCard title="On Leave" value={employees.filter(e => e.status === 'On Leave').length} icon="🌴" color="#f59e0b" />
-          <StatCard title="Remote" value={employees.filter(e => e.status === 'Remote').length} icon="🏠" color="#ef4444" />
-        </div>
+      <div className="filters-bar">
+        <input
+          type="text"
+          placeholder="Search employees..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
+        />
+        <select
+          value={departmentFilter}
+          onChange={(e) => setDepartmentFilter(e.target.value)}
+          className="department-select"
+        >
+          {departments.map(dept => (
+            <option key={dept} value={dept === 'All Departments' ? '' : dept}>
+              {dept}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        <div className="filters-section">
-          <Input
-            type="text"
-            placeholder="Search by name, email or username..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            icon="🔍"
-          />
-          
-          <select 
-            className="filter-select"
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-          >
-            <option value="">All Departments</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-
-          <select 
-            className="filter-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Status</option>
-            {statuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-
-          {(searchTerm || departmentFilter || statusFilter) && (
-            <button className="clear-filters" onClick={() => {
-              setSearchTerm('');
-              setDepartmentFilter('');
-              setStatusFilter('');
-            }}>
-              Clear Filters ✕
-            </button>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Loading employees...</p>
-          </div>
-        ) : (
-          <>
-            <div className="table-container">
-              <table className="employee-table">
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort('name')}>
-                      Employee {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('email')}>
-                      Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('department')}>
-                      Department {sortField === 'department' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th onClick={() => handleSort('status')}>
-                      Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th>Location</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedEmployees.map(emp => (
-                    <tr key={emp.id}>
-                      <td>
-                        <div className="employee-info">
-                          <div className="employee-avatar">
-                            {emp.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="employee-name">{emp.name}</div>
-                            <div className="employee-username">@{emp.username}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
+      <div className="employees-container">
+        <div className="employees-table-container">
+          <table className="employees-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>ROLE</th>
+                <th>DEPARTMENT</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEmployees.map(emp => (
+                <tr key={emp.id} onClick={() => setSelectedEmployee(emp)}>
+                  <td>
+                    <div className="employee-cell">
+                      <div className="employee-avatar">{emp.name.charAt(0)}</div>
+                      <div>
+                        <div className="employee-name">{emp.name}</div>
                         <div className="employee-email">{emp.email}</div>
-                        <div className="employee-phone">{emp.phone}</div>
-                      </td>
-                      <td>{emp.department}</td>
-                      <td><StatusBadge status={emp.status} /></td>
-                      <td>{emp.location}</td>
-                      <td>
-                        <button className="action-icon" title="View">👁️</button>
-                        <button className="action-icon" title="Edit">✏️</button>
-                        <button className="action-icon" title="Delete">🗑️</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                   </td>
+                   <td>{emp.role}</td>
+                   <td>{emp.department}</td>
+                   <td>
+                    <span className={`status-badge status-${emp.status.toLowerCase().replace(' ', '-')}`}>
+                      {emp.status}
+                    </span>
+                   </td>
+                   <td>
+                    <button className="action-btn">:</button>
+                   </td>
+                 </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {selectedEmployee && (
+          <div className="employee-details">
+            <div className="details-header">
+              <h3>Details</h3>
+              <button className="close-details" onClick={() => setSelectedEmployee(null)}>×</button>
             </div>
-
-            {filteredEmployees.length === 0 && (
-              <div className="no-results">
-                <p>No employees found matching your criteria</p>
+            <div className="details-content">
+              <div className="detail-item">
+                <label>EMAIL</label>
+                <p>{selectedEmployee.email}</p>
               </div>
-            )}
-
-            {totalPages > 1 && (
-              <div className="pagination">
-                <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-                  disabled={currentPage === 1}
-                  className="page-btn"
-                >
-                  ← Previous
-                </button>
-                <span className="page-info">
-                  Page {currentPage} of {totalPages} ({filteredEmployees.length} total)
-                </span>
-                <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
-                  disabled={currentPage === totalPages}
-                  className="page-btn"
-                >
-                  Next →
-                </button>
+              <div className="detail-item">
+                <label>PHONE</label>
+                <p>{selectedEmployee.phone}</p>
               </div>
-            )}
-          </>
+              <div className="detail-item">
+                <label>JOIN DATE</label>
+                <p>{selectedEmployee.joinDate}</p>
+              </div>
+              <div className="detail-item">
+                <label>LOCATION</label>
+                <p>{selectedEmployee.location}</p>
+              </div>
+            </div>
+            <div className="details-actions">
+              <button className="message-btn">Message</button>
+              <button className="edit-profile-btn">Edit Profile</button>
+            </div>
+          </div>
         )}
       </div>
-    </DashboardLayout>
+
+      {/* Add Employee Modal */}
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add New Employee</h2>
+              <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter full name"
+                  value={newEmployee.name}
+                  onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Email Address *</label>
+                <input
+                  type="email"
+                  placeholder="Enter email address"
+                  value={newEmployee.email}
+                  onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                />
+              </div>
+              <div className="form-group">
+                <label>Role</label>
+                <select
+                  value={newEmployee.role}
+                  onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                >
+                  <option value="">Select Role</option>
+                  {roles.map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Department</label>
+                <select
+                  value={newEmployee.department}
+                  onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                >
+                  <option value="">Select Department</option>
+                  {departments.filter(d => d !== 'All Departments').map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select
+                  value={newEmployee.status}
+                  onChange={(e) => setNewEmployee({...newEmployee, status: e.target.value})}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Remote">Remote</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="cancel-btn" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="submit-btn" onClick={handleAddEmployee}>Add Employee</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
