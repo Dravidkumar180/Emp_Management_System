@@ -7,9 +7,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Safely get user from localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Invalid user data in localStorage:', error);
+        localStorage.removeItem('user');
+        setUser(null);
+      }
     }
   }, []);
 
@@ -18,7 +26,11 @@ export const AuthProvider = ({ children }) => {
     return new Promise((resolve) => {
       setTimeout(() => {
         if (email && password) {
-          const userData = { email, name: email.split('@')[0], role: 'Admin' };
+          const userData = { 
+            email, 
+            name: email.split('@')[0],
+            role: 'Administrator'
+          };
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
           resolve(true);
@@ -42,4 +54,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext); 

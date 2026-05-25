@@ -65,20 +65,46 @@ const Sidebar = ({ user }) => {
     },
   ];
 
+  // Safe function to get user initials
   const getUserInitials = () => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      return parsedUser.name?.charAt(0).toUpperCase() || 'A';
+    try {
+      if (user && user.name) {
+        return user.name.charAt(0).toUpperCase();
+      }
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser && parsedUser.name) {
+          return parsedUser.name.charAt(0).toUpperCase();
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
     return 'A';
   };
 
+  // Safe function to get user name
   const getUserName = () => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      return parsedUser.name?.split('@')[0] || 'Admin User';
+    try {
+      if (user && user.name) {
+        return user.name;
+      }
+      if (user && user.email) {
+        return user.email.split('@')[0];
+      }
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser && parsedUser.name) {
+          return parsedUser.name;
+        }
+        if (parsedUser && parsedUser.email) {
+          return parsedUser.email.split('@')[0];
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
     return 'Admin User';
   };
@@ -117,10 +143,7 @@ const Sidebar = ({ user }) => {
       <div className="sidebar-footer">
         <div className="user-info">
           <div className="user-avatar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 21V19C20 16.8 18.2 15 16 15H8C5.8 15 4 16.8 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
-            </svg>
+            {getUserInitials()}
           </div>
           <div className="user-details">
             <span className="user-name">{getUserName()}</span>
