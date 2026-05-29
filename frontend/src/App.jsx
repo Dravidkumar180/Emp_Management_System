@@ -1,86 +1,84 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { NotificationProvider } from './context/NotificationContext';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
+import Departments from './pages/Departments';
+import Attendance from './pages/Attendance';
+import Settings from './pages/Settings';
+import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
+import './styles/App.css';
 
-// Placeholder components for other pages
-const Departments = () => (
-  <div style={{ padding: '2rem' }}>
-    <h1>Departments</h1>
-    <p>Department management coming soon...</p>
-  </div>
-);
+const HomeRedirect = () => {
+  const { user, loading } = useAuth();
 
-const Attendance = () => (
-  <div style={{ padding: '2rem' }}>
-    <h1>Attendance</h1>
-    <p>Attendance tracking coming soon...</p>
-  </div>
-);
+  if (loading) {
+    return null;
+  }
 
-const Settings = () => (
-  <div style={{ padding: '2rem' }}>
-    <h1>Settings</h1>
-    <p>Settings coming soon...</p>
-  </div>
-);
-
-const PrivateRoute = ({ children }) => {
-  const user = localStorage.getItem('user');
-  return user ? children : <Navigate to="/login" />;
+  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
 };
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
         <Router>
+          <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/" element={<HomeRedirect />} />
+            
             <Route path="/dashboard" element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <DashboardLayout>
                   <Dashboard />
                 </DashboardLayout>
-              </PrivateRoute>
+              </ProtectedRoute>
             } />
+            
             <Route path="/employees" element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <DashboardLayout>
                   <Employees />
                 </DashboardLayout>
-              </PrivateRoute>
+              </ProtectedRoute>
             } />
+            
             <Route path="/departments" element={
-              <PrivateRoute>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
                   <Departments />
                 </DashboardLayout>
-              </PrivateRoute>
+              </ProtectedRoute>
             } />
+            
             <Route path="/attendance" element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <DashboardLayout>
                   <Attendance />
                 </DashboardLayout>
-              </PrivateRoute>
+              </ProtectedRoute>
             } />
+            
             <Route path="/settings" element={
-              <PrivateRoute>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
                   <Settings />
                 </DashboardLayout>
-              </PrivateRoute>
+              </ProtectedRoute>
             } />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Router>
-      </AuthProvider>
+        </AuthProvider>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

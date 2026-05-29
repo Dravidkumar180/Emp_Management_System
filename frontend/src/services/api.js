@@ -1,55 +1,13 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Use JSONPlaceholder API
-const API_BASE_URL = 'https://jsonplaceholder.typicode.com';
-
-// Create axios instance with interceptors
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor
-api.interceptors.response.use(
-  (response) => {
-    console.log(`📥 ${response.status} ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    if (error.code === 'ECONNABORTED') {
-      toast.error('Request timeout. Please try again.');
-    } else if (error.response) {
-      toast.error(`Server error: ${error.response.status}`);
-    } else if (error.request) {
-      toast.error('Network error. Check your connection.');
-    } else {
-      toast.error('An error occurred. Please try again.');
-    }
-    return Promise.reject(error);
-  }
-);
+const JSONPLACEHOLDER_URL = 'https://jsonplaceholder.typicode.com';
 
 // Transform user data to employee format
-const transformToEmployee = (user) => {
-  const departments = ['Engineering', 'Human Resources', 'Marketing', 'Sales', 'Finance', 'Operations', 'IT', 'Product'];
-  const statuses = ['Active', 'Active', 'Remote', 'On Leave', 'Active', 'Inactive', 'Active', 'Remote'];
-  const roles = ['Software Engineer', 'HR Manager', 'Marketing Lead', 'Sales Executive', 'Financial Analyst', 'Operations Manager', 'UI/UX Designer', 'Product Manager'];
-  const locations = ['New York', 'London', 'Tokyo', 'Sydney', 'Toronto', 'Berlin', 'Dubai', 'Singapore'];
+const transformUserToEmployee = (user) => {
+  const departments = ['Marketing', 'Data', 'Product', 'Human Resources', 'Design', 'Engineering', 'Sales', 'Finance'];
+  const statuses = ['Inactive', 'On Leave', 'Active', 'Inactive', 'Active', 'Active', 'Remote', 'Active'];
+  const roles = ['Marketing Specialist', 'Data Scientist', 'Product Manager', 'HR Manager', 'UI/UX Designer', 'Frontend Developer', 'Sales Executive', 'Financial Analyst'];
   
   const index = (user.id - 1) % departments.length;
   
@@ -64,57 +22,75 @@ const transformToEmployee = (user) => {
     department: departments[index],
     status: statuses[index],
     role: roles[index],
-    location: locations[index],
-    joinDate: `202${user.id % 3}-${String((user.id % 12) + 1).padStart(2, '0')}-15`,
+    joinDate: `202${user.id % 3}-${String((user.id % 12) + 1).padStart(2, '0')}-${String((user.id % 28) + 1).padStart(2, '0')}`,
     avatar: user.name.charAt(0).toUpperCase()
   };
 };
 
-// Fetch all employees
+// Fetch employees from JSONPlaceholder
 export const fetchEmployees = async () => {
   try {
-    const response = await api.get('/users');
-    return response.data.map(transformToEmployee);
+    const response = await axios.get(`${JSONPLACEHOLDER_URL}/users`);
+    const users = response.data;
+    return users.map(transformUserToEmployee);
   } catch (error) {
-    console.error('Fetch employees failed:', error);
-    throw error;
+    console.error('Fetch error:', error);
+    return [];
   }
 };
 
-// Fetch employee by ID
-export const fetchEmployeeById = async (id) => {
+// Get all employees (API + localStorage)
+export const getAllEmployees = async () => {
   try {
-    const response = await api.get(`/users/${id}`);
-    return transformToEmployee(response.data);
+    const apiEmployees = await fetchEmployees();
+    const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const savedById = savedEmployees.reduce((acc, emp) => {
+      acc[emp.id] = emp;
+      return acc;
+    }, {});
+    const apiById = apiEmployees.reduce((acc, emp) => {
+      acc[emp.id] = emp;
+      return acc;
+    }, {});
+
+    const mergedEmployees = apiEmployees.map((emp) => savedById[emp.id] || emp);
+    const savedOnly = savedEmployees.filter((emp) => !apiById[emp.id]);
+    return [...mergedEmployees, ...savedOnly];
   } catch (error) {
-    console.error(`Fetch employee ${id} failed:`, error);
-    throw error;
+    console.error('Error:', error);
+    return [];
   }
 };
 
-// Create new employee (mock POST)
+// Create new employee (save to localStorage)
 export const createEmployee = async (employeeData) => {
   try {
-    const response = await api.post('/users', {
+    const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const newId = Date.now(); // Unique ID
+    
+    const newEmployee = {
+      id: newId,
       name: employeeData.name,
       email: employeeData.email,
       username: employeeData.name.toLowerCase().replace(/\s/g, '.'),
-      phone: '+1 (555) 000-0000',
-      company: { name: 'New Company' }
-    });
-    
-    return {
-      id: Date.now(),
-      ...employeeData,
-      username: employeeData.name.toLowerCase().replace(/\s/g, '.'),
-      phone: '+1 (555) 000-0000',
+      phone: employeeData.phone || '+1 (555) 000-0000',
       company: 'New Company',
+      department: employeeData.department,
+      status: employeeData.status,
+      role: employeeData.role,
       joinDate: new Date().toISOString().split('T')[0],
-      location: 'New York',
+      location: employeeData.location || 'New York',
       avatar: employeeData.name.charAt(0).toUpperCase()
     };
+    
+    savedEmployees.push(newEmployee);
+    localStorage.setItem('employees', JSON.stringify(savedEmployees));
+    
+    toast.success('Employee added successfully!');
+    return newEmployee;
   } catch (error) {
-    console.error('Create employee failed:', error);
+    console.error('Create error:', error);
+    toast.error('Failed to add employee');
     throw error;
   }
 };
@@ -122,10 +98,29 @@ export const createEmployee = async (employeeData) => {
 // Update employee
 export const updateEmployee = async (id, employeeData) => {
   try {
-    const response = await api.put(`/users/${id}`, employeeData);
-    return transformToEmployee({ ...response.data, id });
+    const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const index = savedEmployees.findIndex(emp => emp.id === id);
+
+    if (index !== -1) {
+      savedEmployees[index] = { ...savedEmployees[index], ...employeeData };
+      localStorage.setItem('employees', JSON.stringify(savedEmployees));
+      toast.success('Employee updated successfully!');
+      return savedEmployees[index];
+    }
+
+    const updatedEmployee = {
+      id,
+      ...employeeData,
+      avatar: employeeData.name ? employeeData.name.charAt(0).toUpperCase() : employeeData.avatar,
+    };
+    savedEmployees.push(updatedEmployee);
+    localStorage.setItem('employees', JSON.stringify(savedEmployees));
+
+    toast.success('Employee updated successfully!');
+    return updatedEmployee;
   } catch (error) {
-    console.error(`Update employee ${id} failed:`, error);
+    console.error('Update error:', error);
+    toast.error('Failed to update employee');
     throw error;
   }
 };
@@ -133,30 +128,17 @@ export const updateEmployee = async (id, employeeData) => {
 // Delete employee
 export const deleteEmployee = async (id) => {
   try {
-    await api.delete(`/users/${id}`);
+    const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const filtered = savedEmployees.filter(emp => emp.id !== id);
+    localStorage.setItem('employees', JSON.stringify(filtered));
+    
+    toast.success('Employee deleted successfully!');
     return { success: true };
   } catch (error) {
-    console.error(`Delete employee ${id} failed:`, error);
+    console.error('Delete error:', error);
+    toast.error('Failed to delete employee');
     throw error;
   }
 };
 
-// Get department statistics
-export const getDepartmentStats = async (employees) => {
-  const stats = {};
-  employees.forEach(emp => {
-    stats[emp.department] = (stats[emp.department] || 0) + 1;
-  });
-  return stats;
-};
-
-// Get status statistics
-export const getStatusStats = async (employees) => {
-  const stats = { Active: 0, Remote: 0, 'On Leave': 0, Inactive: 0 };
-  employees.forEach(emp => {
-    stats[emp.status] = (stats[emp.status] || 0) + 1;
-  });
-  return stats;
-};
-
-export default api;
+export default { getAllEmployees, createEmployee, updateEmployee, deleteEmployee };

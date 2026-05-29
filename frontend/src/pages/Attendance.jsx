@@ -1,33 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import Input from '../components/common/Input';
-import StatusBadge from '../components/common/StatusBadge';
-import { fetchEmployees } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { getAllEmployees } from '../services/api';
 import './Attendance.css';
+import { useNotifications } from '../context/NotificationContext';
 
 const Attendance = () => {
-  const [attendance, setAttendance] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
   const itemsPerPage = 8;
 
   useEffect(() => {
-    loadAttendance();
-  }, []);
+    loadAttendanceData();
+  }, [selectedDate]);
 
-  const loadAttendance = async () => {
+  const loadAttendanceData = async () => {
     try {
-      const data = await fetchEmployees();
-      const today = new Date().toISOString().split('T')[0];
-      const attendanceData = data.map(emp => ({
-        ...emp,
-        date: today,
-        checkIn: '09:00 AM',
-        checkOut: '06:00 PM',
-        hoursWorked: '8h'
+      setLoading(true);
+      const employees = await getAllEmployees();
+      
+      // Generate attendance records for today
+      const records = employees.map(emp => ({
+        id: emp.id,
+        employee: emp.name,
+        department: emp.department,
+        date: selectedDate,
+        status: getRandomStatus(),
+        avatar: emp.avatar,
+        email: emp.email,
+        checkIn: getRandomTime('09:00', '10:30'),
+        checkOut: getRandomTime('17:00', '18:30'),
+        hoursWorked: getRandomHours()
       }));
-      setAttendance(attendanceData);
+      
+      setAttendanceRecords(records);
+      setFilteredRecords(records);
     } catch (error) {
       console.error('Error loading attendance:', error);
     } finally {
@@ -35,141 +45,239 @@ const Attendance = () => {
     }
   };
 
-  const filteredAttendance = attendance.filter(record =>
-    record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getRandomStatus = () => {
+    const statuses = ['Active', 'Active', 'Active', 'On Leave', 'Inactive', 'Remote'];
+    return statuses[Math.floor(Math.random() * statuses.length)];
+  };
 
-  const paginatedAttendance = filteredAttendance.slice(
+  const getRandomTime = (min, max) => {
+    const minTime = new Date(`2000-01-01 ${min}`).getTime();
+    const maxTime = new Date(`2000-01-01 ${max}`).getTime();
+    const randomTime = new Date(minTime + Math.random() * (maxTime - minTime));
+    return randomTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getRandomHours = () => {
+    const hours = ['8.5', '8.0', '7.5', '9.0', '8.2'];
+    return hours[Math.floor(Math.random() * hours.length)];
+  };
+
+  useEffect(() => {
+    const filtered = attendanceRecords.filter(record =>
+      record.employee.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.department.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredRecords(filtered);
+    setCurrentPage(1);
+  }, [searchTerm, attendanceRecords]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+  const paginatedRecords = filteredRecords.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const totalPages = Math.ceil(filteredAttendance.length / itemsPerPage);
-  const presentCount = attendance.filter(a => a.status === 'Active').length;
-  const attendanceRate = Math.round((presentCount / attendance.length) * 100);
+  // Statistics
+  const totalEmployees = attendanceRecords.length;
+  const presentCount = attendanceRecords.filter(r => r.status === 'Active').length;
+  const onLeaveCount = attendanceRecords.filter(r => r.status === 'On Leave').length;
+  const inactiveCount = attendanceRecords.filter(r => r.status === 'Inactive').length;
+  const remoteCount = attendanceRecords.filter(r => r.status === 'Remote').length;
+  const attendanceRate = Math.round((presentCount / totalEmployees) * 100);
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading attendance records...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const { addNotification } = useNotifications();
+
+  const handleDateChange = (e) => {
+    setSelectedDate(e.target.value);
+    addNotification({ type: 'info', title: 'Attendance Date', message: `Viewing attendance for ${e.target.value}` });
+  };
+
+  const downloadReport = () => {
+    try {
+      const rows = filteredRecords.map(r => ({
+        Employee: r.employee,
+        Department: r.department,
+        Date: r.date,
+        Status: r.status,
+        'Check In': r.checkIn || '-',
+        'Check Out': r.checkOut || '-',
+        Hours: r.hoursWorked || '-'
+      }));
+
+      if (rows.length === 0) {
+        addNotification({ type: 'info', title: 'Download Report', message: 'No records to download' });
+        return;
+      }
+
+      const headers = Object.keys(rows[0]);
+      const csvContent = [headers.join(',')].concat(
+        rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))
+      ).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const fileName = `attendance-report-${selectedDate}.csv`;
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      addNotification({ type: 'success', title: 'Report Downloaded', message: `Report saved as ${fileName}` });
+    } catch (e) {
+      console.error('Download failed', e);
+      addNotification({ type: 'warning', title: 'Download Failed', message: 'Could not generate report' });
+    }
+  };
 
   return (
-    <DashboardLayout>
       <div className="attendance-page">
-        <div className="page-header">
-          <div>
-            <h1>Attendance</h1>
-            <p>Track daily attendance records by employee</p>
+        {/* Header */}
+        <div className="attendance-header">
+          <h1>Attendance</h1>
+          <p>Track daily attendance records by employee.</p>
+        </div>
+
+        {/* Filters */}
+        <div className="attendance-filters">
+          <div className="search-box">
+            <input
+              type="text"
+              placeholder="Search by employee name or department..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="filters-right">
+            <div className="date-picker">
+              <label>Date:</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+              />
+            </div>
+            <button className="download-report-btn" onClick={downloadReport} title="Download CSV report">⬇️ Download Report</button>
           </div>
         </div>
 
-        <div className="stats-row">
-          <div className="stat-card">
-            <div className="stat-icon">👥</div>
-            <div className="stat-info">
-              <div className="stat-value">{attendance.length}</div>
-              <div className="stat-label">Total Employees</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-info">
-              <div className="stat-value">{presentCount}</div>
-              <div className="stat-label">Present Today</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <div className="stat-info">
-              <div className="stat-value">{attendanceRate}%</div>
-              <div className="stat-label">Attendance Rate</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="filters-section">
-          <Input
-            type="text"
-            placeholder="Search by employee name or department..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            icon="🔍"
-          />
-        </div>
-
-        <div className="table-wrapper">
+        {/* Attendance Table */}
+        <div className="attendance-table-wrapper">
           <table className="attendance-table">
             <thead>
               <tr>
-                <th>Employee</th>
-                <th>Department</th>
-                <th>Date</th>
-                <th>Check In</th>
-                <th>Check Out</th>
-                <th>Hours</th>
-                <th>Status</th>
+                <th>EMPLOYEE</th>
+                <th>DEPARTMENT</th>
+                <th>DATE</th>
+                <th>STATUS</th>
+                <th>CHECK IN</th>
+                <th>CHECK OUT</th>
+                <th>HOURS</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedAttendance.map(record => (
-                <tr key={record.id}>
-                  <td>
-                    <div className="employee-cell">
-                      <div className="employee-avatar">{record.avatar}</div>
-                      <div>
-                        <div className="employee-name">{record.name}</div>
-                        <div className="employee-email">{record.email}</div>
-                      </div>
-                    </div>
+              {paginatedRecords.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="no-data">
+                    No attendance records found
                   </td>
-                  <td>{record.department}</td>
-                  <td>{record.date}</td>
-                  <td>{record.checkIn}</td>
-                  <td>{record.checkOut}</td>
-                  <td>{record.hoursWorked}</td>
-                  <td><StatusBadge status={record.status} /></td>
                 </tr>
-              ))}
+              ) : (
+                paginatedRecords.map(record => (
+                  <tr key={record.id}>
+                    <td>
+                      <div className="employee-info">
+                        <div className="employee-avatar">{record.avatar}</div>
+                        <div>
+                          <div className="employee-name">{record.employee}</div>
+                          <div className="employee-email">{record.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{record.department}</td>
+                    <td>{record.date}</td>
+                    <td>
+                      <span className={`attendance-status status-${record.status.toLowerCase().replace(' ', '-')}`}>
+                        {record.status}
+                      </span>
+                    </td>
+                    <td>{record.status === 'Active' ? record.checkIn : '-'}</td>
+                    <td>{record.status === 'Active' ? record.checkOut : '-'}</td>
+                    <td>{record.status === 'Active' ? `${record.hoursWorked} hrs` : '-'}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {filteredAttendance.length === 0 && (
-          <div className="no-results">
-            <p>No attendance records found</p>
-          </div>
-        )}
+       {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination-numbers">
+              <button 
+                className="page-nav"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ←
+              </button>
+              
+              {[...Array(totalPages)].map((_, index) => {
+                const pageNumber = index + 1;
+                if (
+                  pageNumber === 1 ||
+                  pageNumber === totalPages ||
+                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={pageNumber}
+                      className={`page-number ${currentPage === pageNumber ? 'active' : ''}`}
+                      onClick={() => handlePageChange(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                } else if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                  return <span key={pageNumber} className="page-dots">...</span>;
+                }
+                return null;
+              })}
+              
+              <button 
+                className="page-nav"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                →
+              </button>
+            </div>
+          )}
 
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-              disabled={currentPage === 1}
-              className="page-btn"
-            >
-              ← Previous
-            </button>
-            <span className="page-info">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
-              disabled={currentPage === totalPages}
-              className="page-btn"
-            >
-              Next →
-            </button>
+        {/* Summary Footer */}
+        <div className="attendance-footer">
+          <div className="summary">
+            <span className="summary-dot active"></span>
+            <span>Present: {presentCount}</span>
+            <span className="summary-dot leave"></span>
+            <span>On Leave: {onLeaveCount}</span>
+            <span className="summary-dot remote"></span>
+            <span>Remote: {remoteCount}</span>
+            <span className="summary-dot inactive"></span>
+            <span>Inactive: {inactiveCount}</span>
           </div>
-        )}
+          <div className="update-time">
+            Last updated: {new Date().toLocaleTimeString()}
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
   );
 };
 

@@ -13,6 +13,15 @@
   flex-direction: column;
 }
 
+.dashboard-layout.sidebar-closed .sidebar {
+  transform: translateX(-100%);
+}
+
+.dashboard-layout.sidebar-closed .main-content {
+  margin-left: 0;
+  width: 100%;
+}
+
 .content {
   padding: 2rem;
   flex: 1;
