@@ -27,3 +27,16 @@ class AuthController:
         except Exception as e:
             print(f"Controller login error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    @staticmethod
+    def reset_password(reset_data: dict):
+        try:
+            result = AuthService.reset_password(reset_data)
+            if not result:
+                raise HTTPException(status_code=404, detail="User not found")
+            return {"message": "Password has been reset successfully"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Controller reset password error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))

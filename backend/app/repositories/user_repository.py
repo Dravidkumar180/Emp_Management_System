@@ -12,6 +12,16 @@ class UserRepository:
         except Exception as e:
             print(f"Error getting user by email: {e}")
             return None
+
+    @staticmethod
+    def get_by_email_or_name(db: Session, identifier: str) -> Optional[User]:
+        try:
+            return db.query(User).filter(
+                (User.email == identifier) | (User.name == identifier)
+            ).first()
+        except Exception as e:
+            print(f"Error getting user by email or name: {e}")
+            return None
     
     @staticmethod
     def get_by_id(db: Session, user_id: int) -> Optional[User]:
@@ -40,3 +50,18 @@ class UserRepository:
             print(f"Error creating user: {e}")
             db.rollback()
             raise e
+
+    @staticmethod
+    def update_password(db: Session, identifier: str, new_password: str) -> Optional[User]:
+        try:
+            user = UserRepository.get_by_email_or_name(db, identifier)
+            if not user:
+                return None
+            user.password = get_password_hash(new_password)
+            db.commit()
+            db.refresh(user)
+            return user
+        except Exception as e:
+            print(f"Error updating password: {e}")
+            db.rollback()
+            return None

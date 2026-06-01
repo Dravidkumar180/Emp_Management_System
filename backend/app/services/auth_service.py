@@ -41,7 +41,7 @@ class AuthService:
         try:
             print(f"📝 Login attempt: {login_data.get('email')}")
             
-            user = UserRepository.get_by_email(db, login_data["email"])
+            user = UserRepository.get_by_email_or_name(db, login_data["email"])
             if not user:
                 print(f"❌ User not found: {login_data['email']}")
                 return None
@@ -67,6 +67,31 @@ class AuthService:
             }
         except Exception as e:
             print(f"❌ Login error: {e}")
+            print(traceback.format_exc())
+            return None
+        finally:
+            db.close()
+
+    @staticmethod
+    def reset_password(reset_data: dict):
+        db = SessionLocal()
+        try:
+            print(f"📝 Password reset attempt: {reset_data.get('email')}")
+            user = UserRepository.get_by_email_or_name(db, reset_data["email"])
+            if not user:
+                print(f"❌ User not found: {reset_data['email']}")
+                return None
+            updated_user = UserRepository.update_password(db, reset_data["email"], reset_data["password"])
+            if not updated_user:
+                return None
+            print(f"✅ Password updated for: {updated_user.email}")
+            return {
+                "email": updated_user.email,
+                "name": updated_user.name,
+                "role": updated_user.role
+            }
+        except Exception as e:
+            print(f"❌ Password reset error: {e}")
             print(traceback.format_exc())
             return None
         finally:

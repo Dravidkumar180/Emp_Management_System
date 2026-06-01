@@ -132,11 +132,11 @@ const Settings = () => {
   }, []);
 
   const tabs = [
-    { id: 'notifications', name: 'Notifications', icon: '🔔' },
-    { id: 'attendance', name: 'Attendance', icon: '📅' },
-    { id: 'leave', name: 'Leave', icon: '🌴' },
-    { id: 'report', name: 'Reports', icon: '📊' },
-    { id: 'appearance', name: 'Appearance', icon: '🎨' }
+    { id: 'notifications', name: 'Notifications'},
+    { id: 'attendance', name: 'Attendance' },
+    { id: 'leave', name: 'Leave' },
+    { id: 'report', name: 'Reports' },
+    { id: 'appearance', name: 'Appearance' }
   ];
 
   return (
@@ -175,7 +175,7 @@ const Settings = () => {
           {activeTab === 'notifications' && (
             <div className="settings-section">
               <div className="settings-card">
-                <h2>🔔 Notification Preferences</h2>
+                <h2> Notification Preferences</h2>
                 <div className="settings-list">
                   <div className="setting-toggle">
                     <div className="toggle-info">
@@ -285,7 +285,7 @@ const Settings = () => {
           {activeTab === 'attendance' && (
             <div className="settings-section">
               <div className="settings-card">
-                <h2>📅 Attendance Rules</h2>
+                <h2> Attendance Rules</h2>
                 <div className="settings-grid">
                   <div className="setting-field">
                     <label>Default Check-in Time</label>
@@ -381,7 +381,7 @@ const Settings = () => {
           {activeTab === 'leave' && (
             <div className="settings-section">
               <div className="settings-card">
-                <h2>🌴 Leave Management</h2>
+                <h2> Leave Management</h2>
                 <div className="settings-grid">
                   <div className="setting-field">
                     <label>Annual Leave (days/year)</label>
@@ -462,7 +462,7 @@ const Settings = () => {
           {activeTab === 'report' && (
             <div className="settings-section">
               <div className="settings-card">
-                <h2>📊 Report Configuration</h2>
+                <h2> Report Configuration</h2>
                 <div className="settings-grid">
                   <div className="setting-field">
                     <label>Report Frequency</label>
@@ -535,7 +535,7 @@ const Settings = () => {
           {activeTab === 'appearance' && (
             <div className="settings-section">
               <div className="settings-card">
-                <h2>🎨 Appearance</h2>
+                <h2> Appearance</h2>
                 <div className="settings-grid">
                   <div className="setting-field">
                     <label>Theme</label>

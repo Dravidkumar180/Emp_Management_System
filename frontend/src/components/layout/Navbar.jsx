@@ -2,12 +2,14 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../common/ThemeToggle';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
 
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
   const { notifications, removeNotification, clearNotifications } = useNotifications();
+  const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -23,6 +25,12 @@ const Navbar = ({ onSidebarToggle }) => {
 
   // Get user name for welcome message
   const getUserName = () => {
+    if (user?.name) {
+      return user.name;
+    }
+    if (user?.email) {
+      return user.email.split('@')[0];
+    }
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       try {
@@ -41,6 +49,7 @@ const Navbar = ({ onSidebarToggle }) => {
     return name.charAt(0).toUpperCase();
   };
 
+  const isAdmin = user?.role === 'admin';
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -76,26 +85,30 @@ const Navbar = ({ onSidebarToggle }) => {
           <span>Team</span>
         </button>
 
-        {/* Attendance Button - Redirects to Attendance Page */}
-        <button className="nav-icon-btn" onClick={() => navigate('/attendance')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-            <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
-            <path d="M15 14L12 17M9 14L12 17M12 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <span>Attendance</span>
-        </button>
+        {isAdmin && (
+          <>
+            {/* Attendance Button - Redirects to Attendance Page */}
+            <button className="nav-icon-btn" onClick={() => navigate('/attendance')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+                <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
+                <path d="M15 14L12 17M9 14L12 17M12 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span>Attendance</span>
+            </button>
 
-        {/* Departments Button - Redirects to Departments Page */}
-        <button className="nav-icon-btn" onClick={() => navigate('/departments')}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
-            <path d="M16 21V5C16 3.9 15.1 3 14 3H10C8.9 3 8 3.9 8 5V21" stroke="currentColor" strokeWidth="2"/>
-          </svg>
-          <span>Departments</span>
-        </button>
+            {/* Departments Button - Redirects to Departments Page */}
+            <button className="nav-icon-btn" onClick={() => navigate('/departments')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M16 21V5C16 3.9 15.1 3 14 3H10C8.9 3 8 3.9 8 5V21" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+              <span>Departments</span>
+            </button>
+          </>
+        )}
       </div>
       
       <div className="navbar-right">
@@ -138,7 +151,7 @@ const Navbar = ({ onSidebarToggle }) => {
           </div>
           <div className="admin-details-navbar">
             <span className="admin-name-navbar">{getUserName()}</span>
-            <span className="admin-role-navbar">Administrator</span>
+            <span className="admin-role-navbar">{(user?.role || 'user').charAt(0).toUpperCase() + (user?.role || 'user').slice(1)}</span>
           </div>
         </div>
       </div>

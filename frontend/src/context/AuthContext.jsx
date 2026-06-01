@@ -14,8 +14,10 @@ export const AuthProvider = ({ children }) => {
         const userData = await getCurrentUser(token);
         if (userData) {
           setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
         } else {
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
       }
       setLoading(false);
@@ -28,6 +30,7 @@ export const AuthProvider = ({ children }) => {
       const response = await loginUser(email, password);
       if (response && response.access_token) {
         localStorage.setItem('token', response.access_token);
+        localStorage.setItem('user', JSON.stringify(response.user));
         setUser(response.user);
         return { success: true, user: response.user };
       }
@@ -52,6 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 

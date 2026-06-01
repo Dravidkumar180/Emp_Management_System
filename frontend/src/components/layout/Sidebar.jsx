@@ -3,9 +3,9 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
 
-const Sidebar = ({ user, isOpen }) => {
+const Sidebar = ({ isOpen }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user: authUser, logout } = useAuth();
 
   const menuItems = [
     { 
@@ -68,6 +68,11 @@ const Sidebar = ({ user, isOpen }) => {
       )
     },
   ];
+
+  const isAdmin = authUser?.role === 'admin';
+  const visibleMenuItems = isAdmin
+    ? menuItems
+    : menuItems.filter((item) => item.path === '/dashboard' || item.path === '/employees');
 
   // Safe function to get user initials
   const getUserInitials = () => {
@@ -138,7 +143,7 @@ return (
       </div>  
       
       <nav className="sidebar-nav">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -168,7 +173,7 @@ return (
           </div>
           <div className="user-details">
             <span className="user-name">{getUserName()}</span>
-            <span className="user-role">Administrator</span>
+            <span className="user-role">{(authUser?.role || 'user').charAt(0).toUpperCase() + (authUser?.role || 'user').slice(1)}</span>
           </div>
         </div>
       </div>

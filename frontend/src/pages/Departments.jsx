@@ -140,7 +140,7 @@ const Departments = () => {
 
         {/* Search Bar */}
         <div className="departments-search">
-          <div className="search-icon">🔍</div>
+          <div className="search-icon"></div>
           <input
             type="text"
             placeholder="Search departments..."

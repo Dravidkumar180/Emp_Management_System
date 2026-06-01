@@ -7,6 +7,14 @@ class UserBase(BaseModel):
     email: EmailStr
     role: str = "user"
 
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v):
+        normalized = v.lower()
+        if normalized not in ("admin", "user"):
+            raise ValueError('Role must be "admin" or "user"')
+        return normalized
+
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
     
@@ -20,6 +28,11 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    confirm_password: str
 
 class UserResponse(UserBase):
     id: int

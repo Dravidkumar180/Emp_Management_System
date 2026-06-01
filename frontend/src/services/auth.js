@@ -43,6 +43,22 @@ export const loginUser = async (email, password) => {
   }
 };
 
+export const resetPassword = async (email, password) => {
+  try {
+    const response = await api.post('/auth/forgot-password', {
+      email,
+      password,
+      confirm_password: password
+    });
+    toast.success('Password has been reset successfully');
+    return response.data;
+  } catch (error) {
+    console.error('Reset password error:', error);
+    toast.error(error.response?.data?.detail || 'Password reset failed');
+    throw error;
+  }
+};
+
 // Get current user
 export const getCurrentUser = async (token) => {
   try {

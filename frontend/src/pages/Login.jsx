@@ -10,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('user');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ const Login = () => {
         return;
       }
       
-      const result = await register(name, email, password);
+      const result = await register(name, email, password, role);
       if (result.success) {
         navigate('/dashboard');
       } else {
@@ -91,12 +92,22 @@ const Login = () => {
               />
             </div>
           )}
+
+          {!isLogin && (
+            <div className="form-group">
+              <label>Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          )}
           
           <div className="form-group">
-            <label>Email</label>
+            <label>Email / Name</label>
             <input
-              type="email"
-              placeholder="Enter your email"
+              type="text"
+              placeholder="Enter your email or name"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
@@ -124,7 +135,9 @@ const Login = () => {
                 /> 
                 Remember me
               </label>
-              <a href="#" className="forgot">Forgot password?</a>
+              <button type="button" className="forgot" onClick={() => navigate('/forgot-password')}>
+                Forgot password?
+              </button>
             </div>
           )}
           

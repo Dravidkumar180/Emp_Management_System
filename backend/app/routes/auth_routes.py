@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from app.controllers.auth_controller import AuthController
+from app.repositories.user_repository import UserRepository
+from app.database.database import SessionLocal
 from app.utils.auth import decode_access_token
 
 router = APIRouter()
@@ -14,8 +16,13 @@ class RegisterRequest(BaseModel):
     role: str = "user"
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    password: str
+    confirm_password: str
 
 @router.post("/auth/register")
 async def register(user: RegisterRequest):
@@ -41,6 +48,23 @@ async def login(user: LoginRequest):
         print(f"Login route error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/auth/forgot-password")
+async def forgot_password(data: PasswordResetRequest):
+    """Reset password for a user"""
+    if data.password != data.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    try:
+        result = AuthController.reset_password({
+            "email": data.email,
+            "password": data.password
+        })
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Forgot password route error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/auth/me")
 async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get current user info"""
@@ -48,4 +72,17 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return {"email": payload.get("sub"), "role": payload.get("role")}
+
+    db = SessionLocal()
+    try:
+        user = UserRepository.get_by_email(db, payload.get("sub"))
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role
+        }
+    finally:
+        db.close()

@@ -11,6 +11,7 @@ import Employees from './pages/Employees';
 import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
 import Settings from './pages/Settings';
+import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/App.css';
@@ -61,7 +62,7 @@ function App() {
             } />
             
             <Route path="/attendance" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
                   <Attendance />
                 </DashboardLayout>
@@ -75,6 +76,8 @@ function App() {
                 </DashboardLayout>
               </ProtectedRoute>
             } />
+            
+            <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </Router>
         </AuthProvider>
