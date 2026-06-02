@@ -72,6 +72,110 @@ export const getCurrentUser = async (token) => {
   }
 };
 
+export const submitRoleChangeRequest = async (currentPassword, adminEmail) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const normalizedAdminEmail = adminEmail.trim().toLowerCase();
+    const response = await api.post(
+      '/auth/role-request',
+      {
+        current_password: currentPassword,
+        admin_email: normalizedAdminEmail
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
+    toast.success('Role change request submitted to admin.');
+    return response.data;
+  } catch (error) {
+    console.error('Submit role change request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to submit role request');
+    throw error;
+  }
+};
+
+export const fetchPendingRoleRequests = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.get('/auth/role-requests/pending', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Fetch pending role requests error:', error);
+    throw error;
+  }
+};
+
+export const fetchMyRoleRequests = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.get('/auth/role-requests', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Fetch my role requests error:', error);
+    throw error;
+  }
+};
+
+export const fetchAdminReviewers = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.get('/auth/admins', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data.admins;
+  } catch (error) {
+    console.error('Fetch admin reviewers error:', error);
+    throw error;
+  }
+};
+
+export const approveRoleRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/role-requests/${requestId}/approve`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Role request approved.');
+    return response.data;
+  } catch (error) {
+    console.error('Approve role request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to approve request');
+    throw error;
+  }
+};
+
+export const rejectRoleRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/role-requests/${requestId}/reject`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Role request rejected.');
+    return response.data;
+  } catch (error) {
+    console.error('Reject role request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to reject request');
+    throw error;
+  }
+};
+
 // Logout
 export const logoutUser = () => {
   toast.success('Logged out successfully');

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { fetchMyRoleRequests, fetchPendingRoleRequests, approveRoleRequest, rejectRoleRequest, submitRoleChangeRequest } from '../services/auth';
 import './Settings.css';
 import { useNotifications } from '../context/NotificationContext';
 
 const Settings = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { user } = useAuth();
-  
+  const isAdmin = user?.role === 'admin';
+
   // Notification Settings
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
@@ -50,6 +52,12 @@ const Settings = () => {
     recipients: 'admin@empmanage.com'
   });
 
+  // Role Request State
+  const [requests, setRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsMessage, setRequestsMessage] = useState('');
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
+
   // Appearance Settings
   const [appearanceSettings, setAppearanceSettings] = useState({
     theme: darkMode ? 'dark' : 'light',
@@ -60,9 +68,76 @@ const Settings = () => {
     fontSize: 'medium'
   });
 
-  const [activeTab, setActiveTab] = useState('notifications');
+  const [activeTab, setActiveTab] = useState('roleRequest');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
+
+  const loadRequests = async () => {
+    if (!user) return;
+    setRequestsLoading(true);
+    setRequestsMessage('');
+    try {
+      const data = isAdmin
+        ? await fetchPendingRoleRequests()
+        : await fetchMyRoleRequests();
+      setRequests(data);
+    } catch (error) {
+      setRequestsMessage(error.response?.data?.detail || 'Unable to load requests.');
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && activeTab === 'roleRequest') {
+      loadRequests();
+    }
+  }, [activeTab, user]);
+
+  const handleRoleRequest = async (event) => {
+    event.preventDefault();
+    if (!adminEmail || !currentPassword) {
+      setRequestMessage('Please provide both admin email and current password.');
+      return;
+    }
+
+    setRequestLoading(true);
+    setRequestMessage('');
+    try {
+      await submitRoleChangeRequest(currentPassword, adminEmail);
+      setRequestMessage('Your role request has been submitted successfully.');
+      setAdminEmail('');
+      setCurrentPassword('');
+      await loadRequests();
+    } catch (error) {
+      setRequestMessage(error.response?.data?.detail || 'Unable to submit the request.');
+    } finally {
+      setRequestLoading(false);
+    }
+  };
+
+  const handleAdminAction = async (requestId, action) => {
+    setAdminActionLoading(true);
+    setRequestsMessage('');
+    try {
+      if (action === 'approve') {
+        await approveRoleRequest(requestId);
+        setRequestsMessage('Request approved successfully.');
+      } else {
+        await rejectRoleRequest(requestId);
+        setRequestsMessage('Request rejected successfully.');
+      }
+      await loadRequests();
+    } catch (error) {
+      setRequestsMessage(error.response?.data?.detail || 'Unable to update the request.');
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
 
   const handleNotificationChange = (key, value) => {
     setNotificationSettings({ ...notificationSettings, [key]: value });
@@ -132,6 +207,7 @@ const Settings = () => {
   }, []);
 
   const tabs = [
+    { id: 'roleRequest', name: 'Role Request' },
     { id: 'notifications', name: 'Notifications'},
     { id: 'attendance', name: 'Attendance' },
     { id: 'leave', name: 'Leave' },
@@ -144,7 +220,7 @@ const Settings = () => {
         {/* Header */}
         <div className="settings-header">
           <h1>Settings</h1>
-          <p>Configure system preferences and manage your application settings</p>
+          <p>Request a role upgrade or manage your app settings from one place.</p>
         </div>
 
         {/* Save Button */}
@@ -171,6 +247,124 @@ const Settings = () => {
 
         {/* Tab Content */}
         <div className="settings-content">
+          {activeTab === 'roleRequest' && (
+            <div className="settings-section">
+              <div className="settings-card">
+                <h2>{isAdmin ? 'Pending Role Change Requests' : 'Request Admin Role'}</h2>
+                <p>
+                  {isAdmin
+                    ? 'Review and manage incoming role change requests submitted by users.'
+                    : 'Submit a request to become an admin by verifying your current password and specifying the admin reviewer email.'}
+                </p>
+
+                {isAdmin ? (
+                  <>
+                    {requestsLoading ? (
+                      <div className="role-requests-loading">Loading requests...</div>
+                    ) : requests.length === 0 ? (
+                      <div className="role-requests-empty">No pending requests at the moment.</div>
+                    ) : (
+                      <div className="role-requests-table">
+                        <div className="role-requests-row role-requests-head">
+                          <span>User</span>
+                          <span>Email</span>
+                          <span>Submitted</span>
+                          <span>Status</span>
+                          <span>Actions</span>
+                        </div>
+                        {requests.map((request) => (
+                          <div key={request.id} className="role-requests-row">
+                            <span>{request.requester_email.split('@')[0]}</span>
+                            <span>{request.requester_email}</span>
+                            <span>{new Date(request.requested_at).toLocaleString()}</span>
+                            <span className={`status-badge status-${request.status}`}>
+                              {request.status}
+                            </span>
+                            <span className="actions-cell">
+                              <button
+                                className="approve-btn"
+                                disabled={adminActionLoading}
+                                onClick={() => handleAdminAction(request.id, 'approve')}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="reject-btn"
+                                disabled={adminActionLoading}
+                                onClick={() => handleAdminAction(request.id, 'reject')}
+                              >
+                                Reject
+                              </button>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {requestsMessage && <div className="role-request-message">{requestsMessage}</div>}
+                  </>
+                ) : (
+                  <>
+                    <form className="role-request-form" onSubmit={handleRoleRequest}>
+                      <div className="settings-grid">
+                        <div className="setting-field full-width">
+                          <label htmlFor="adminEmail">Admin Reviewer Email</label>
+                          <input
+                            id="adminEmail"
+                            type="email"
+                            value={adminEmail}
+                            onChange={(e) => setAdminEmail(e.target.value)}
+                            placeholder="admin@example.com"
+                            required
+                          />
+                        </div>
+                        <div className="setting-field full-width">
+                          <label htmlFor="currentPassword">Current Password</label>
+                          <input
+                            id="currentPassword"
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Enter your current password"
+                            required
+                          />
+                        </div>
+                      </div>
+                      {requestMessage && <div className="role-request-message">{requestMessage}</div>}
+                      <button className="save-all-btn" type="submit" disabled={requestLoading}>
+                        {requestLoading ? 'Submitting request...' : 'Request Admin Role'}
+                      </button>
+                    </form>
+
+                    {requestsLoading ? (
+                      <div className="role-requests-loading">Loading your request history...</div>
+                    ) : requests.length > 0 ? (
+                      <div className="role-requests-table">
+                        <div className="role-requests-row role-requests-head">
+                          <span>Admin Reviewer</span>
+                          <span>Requested</span>
+                          <span>Status</span>
+                          <span>Reviewed</span>
+                        </div>
+                        {requests.map((request) => (
+                          <div key={request.id} className="role-requests-row">
+                            <span>{request.admin_email}</span>
+                            <span>{new Date(request.requested_at).toLocaleString()}</span>
+                            <span className={`status-badge status-${request.status}`}>
+                              {request.status}
+                            </span>
+                            <span>{request.reviewed_at ? new Date(request.reviewed_at).toLocaleString() : '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="role-requests-empty">No role requests found yet.</div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Notification Settings */}
           {activeTab === 'notifications' && (
             <div className="settings-section">

@@ -69,10 +69,9 @@ const Sidebar = ({ isOpen }) => {
     },
   ];
 
-  const isAdmin = authUser?.role === 'admin';
-  const visibleMenuItems = isAdmin
+  const visibleMenuItems = authUser?.role === 'admin'
     ? menuItems
-    : menuItems.filter((item) => item.path === '/dashboard' || item.path === '/employees');
+    : menuItems.filter((item) => ['/dashboard', '/employees', '/settings'].includes(item.path));
 
   // Safe function to get user initials
   const getUserInitials = () => {

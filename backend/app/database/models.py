@@ -34,6 +34,18 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class RoleChangeRequest(Base):
+    __tablename__ = "role_change_requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, nullable=False)
+    requester_email = Column(String(100), nullable=False)
+    admin_email = Column(String(100), nullable=False)
+    status = Column(String(20), default="pending")
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewer_id = Column(Integer, nullable=True)
+
 class Department(Base):
     __tablename__ = "departments"
     

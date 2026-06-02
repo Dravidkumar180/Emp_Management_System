@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../common/ThemeToggle';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
+import { fetchPendingRoleRequests } from '../../services/auth';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
 
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
-  const { notifications, removeNotification, clearNotifications } = useNotifications();
+  const { notifications, removeNotification, clearNotifications, addNotification } = useNotifications();
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const pendingRequestIdsRef = useRef(new Set());
+  const initialPendingLoad = useRef(true);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -56,6 +60,57 @@ const Navbar = ({ onSidebarToggle }) => {
     month: 'long', 
     day: 'numeric' 
   });
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setPendingCount(0);
+      return;
+    }
+
+    let active = true;
+
+    const loadPendingNotifications = async () => {
+      try {
+        const requests = await fetchPendingRoleRequests();
+        if (!active) return;
+
+        setPendingCount(requests.length);
+        const currentIds = new Set(requests.map((request) => request.id));
+
+        if (initialPendingLoad.current) {
+          initialPendingLoad.current = false;
+          if (requests.length > 0) {
+            addNotification({
+              type: 'info',
+              title: 'Pending Role Requests',
+              message: `You have ${requests.length} pending admin request${requests.length > 1 ? 's' : ''}.`,
+            });
+          }
+        } else {
+          const newRequests = requests.filter((request) => !pendingRequestIdsRef.current.has(request.id));
+          if (newRequests.length > 0) {
+            addNotification({
+              type: 'info',
+              title: 'New Role Request',
+              message: `${newRequests.length} new role request${newRequests.length > 1 ? 's' : ''} need review.`,
+            });
+          }
+        }
+
+        pendingRequestIdsRef.current = currentIds;
+      } catch (error) {
+        console.error('Failed to load pending role requests for notifications', error);
+      }
+    };
+
+    loadPendingNotifications();
+    const interval = setInterval(loadPendingNotifications, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isAdmin, addNotification]);
 
   return (
     <nav className="navbar">
@@ -119,7 +174,9 @@ const Navbar = ({ onSidebarToggle }) => {
                     <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  {notifications.length > 0 && <span className="notification-badge">{notifications.length}</span>}
+                  {(notifications.length || pendingCount) > 0 && (
+                    <span className="notification-badge">{Math.max(notifications.length, pendingCount)}</span>
+                  )}
                 </button>
                 <div className={`notifications-dropdown ${dropdownOpen ? 'open' : ''}`}>
                   <div className="notifications-header">
@@ -127,7 +184,12 @@ const Navbar = ({ onSidebarToggle }) => {
                     <button className="clear-notifs" onClick={() => clearNotifications()}>Clear All</button>
                   </div>
                   <div className="notifications-list">
-                    {notifications.length === 0 && <div className="no-notifs">No notifications</div>}
+                    {notifications.length === 0 && pendingCount === 0 && (
+                      <div className="no-notifs">No notifications</div>
+                    )}
+                    {notifications.length === 0 && pendingCount > 0 && (
+                      <div className="no-notifs">You have {pendingCount} pending role request{pendingCount > 1 ? 's' : ''}.</div>
+                    )}
                     {notifications.map(n => (
                       <div key={n.id} className="notification-item">
                         <div className="notification-content">

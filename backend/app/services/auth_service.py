@@ -11,8 +11,12 @@ class AuthService:
         try:
             print(f"📝 Registering user: {user_data.get('email')}")
             
+# Normalize email and name for lookup and create
+            user_data['email'] = user_data['email'].strip().lower()
+            user_data['name'] = user_data['name'].strip()
+
             # Check if user exists
-            existing = UserRepository.get_by_email(db, user_data["email"])
+            existing = UserRepository.get_by_email(db, user_data['email'])
             if existing:
                 print(f"❌ User already exists: {user_data['email']}")
                 return None
@@ -94,5 +98,14 @@ class AuthService:
             print(f"❌ Password reset error: {e}")
             print(traceback.format_exc())
             return None
+        finally:
+            db.close()
+
+    @staticmethod
+    def list_admin_reviewers():
+        db = SessionLocal()
+        try:
+            admins = UserRepository.get_admins(db)
+            return [admin.email for admin in admins]
         finally:
             db.close()

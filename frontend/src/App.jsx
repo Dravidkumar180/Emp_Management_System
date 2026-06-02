@@ -70,7 +70,7 @@ function App() {
             } />
             
             <Route path="/settings" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
                   <Settings />
                 </DashboardLayout>

@@ -40,3 +40,12 @@ class AuthController:
         except Exception as e:
             print(f"Controller reset password error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    @staticmethod
+    def get_admin_reviewers():
+        try:
+            emails = AuthService.list_admin_reviewers()
+            return {"admins": emails}
+        except Exception as e:
+            print(f"Controller get_admin_reviewers error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))

@@ -86,3 +86,18 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
         }
     finally:
         db.close()
+
+@router.get("/auth/admins")
+async def get_admin_reviewers(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    try:
+        return AuthController.get_admin_reviewers()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"Get admin reviewers error: {exc}")
+        raise HTTPException(status_code=500, detail="Unable to fetch admin reviewers")
