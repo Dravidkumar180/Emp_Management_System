@@ -16,6 +16,44 @@ import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/App.css';
 
+class SettingsBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('Settings page failed to render:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24 }}>
+          <h1>Settings</h1>
+          <p>Settings could not load. Clear saved settings and refresh the page.</p>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('userSettings');
+              localStorage.removeItem('userProfileSettings');
+              window.location.reload();
+            }}
+          >
+            Reset Settings
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const HomeRedirect = () => {
   const { user, loading } = useAuth();
 
@@ -68,11 +106,13 @@ function App() {
                 </DashboardLayout>
               </ProtectedRoute>
             } />
-            
+
             <Route path="/settings" element={
-              <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <ProtectedRoute allowedRoles={['user']}>
                 <DashboardLayout>
-                  <Settings />
+                  <SettingsBoundary>
+                    <Settings />
+                  </SettingsBoundary>
                 </DashboardLayout>
               </ProtectedRoute>
             } />
