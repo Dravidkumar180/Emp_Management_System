@@ -3,6 +3,7 @@ import { getAllEmployees, createEmployee, updateEmployee, deleteEmployee } from 
 import { Toaster, toast } from 'react-hot-toast';
 import './Employees.css';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
@@ -48,16 +49,30 @@ const Employees = () => {
     loadEmployees();
   }, [loadEmployees]);
 
-  // Get unique departments
-  const departments = ['All Departments', ...new Set(employees.map(emp => emp.department))];
+  const { selectedCompany } = useAuth();
+
+  // Get unique departments for the currently selected company
+  const departments = [
+    'All Departments',
+    ...new Set(
+      employees
+        .filter((emp) => !selectedCompany || emp.company === selectedCompany)
+        .map((emp) => emp.department)
+    ),
+  ];
 
   // Filter employees
-  const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = searchTerm === '' || 
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesCompany = !selectedCompany || emp.company === selectedCompany;
+    const matchesSearch =
+      searchTerm === '' ||
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = departmentFilter === '' || departmentFilter === 'All Departments' || emp.department === departmentFilter;
-    return matchesSearch && matchesDept;
+    const matchesDept =
+      departmentFilter === '' ||
+      departmentFilter === 'All Departments' ||
+      emp.department === departmentFilter;
+    return matchesCompany && matchesSearch && matchesDept;
   });
 
   // Pagination
@@ -228,7 +243,8 @@ const Employees = () => {
       <div className="page-header">
         <h1>Employees</h1>
         <p className="page-description">Manage your team members, search, and filter by department.</p>
-        <p className="db-status">📊 Total: {employees.length} employees</p>
+        {selectedCompany && <p className="db-status">🏢 Showing {selectedCompany} employees only</p>}
+        <p className="db-status">📊 Total: {filteredEmployees.length} employees</p>
       </div>
 
       {/* Search Bar */}

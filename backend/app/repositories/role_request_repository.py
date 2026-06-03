@@ -38,9 +38,21 @@ class RoleRequestRepository:
 
     @staticmethod
     def update_status(db: Session, request_obj: RoleChangeRequest, status: str, reviewer_id: Optional[int] = None) -> RoleChangeRequest:
-        request_obj.status = status
-        request_obj.reviewed_at = datetime.utcnow()
-        request_obj.reviewer_id = reviewer_id
+        # Ensure we operate on an instance that's bound to the provided session.
+        # Accept either a RoleChangeRequest instance or an id; re-query inside the session.
+        request_id = None
+        try:
+            request_id = int(getattr(request_obj, 'id', request_obj))
+        except Exception:
+            raise ValueError('Invalid role request reference')
+
+        db_request = db.query(RoleChangeRequest).filter(RoleChangeRequest.id == request_id).first()
+        if not db_request:
+            raise ValueError('Role request not found')
+
+        db_request.status = status
+        db_request.reviewed_at = datetime.utcnow()
+        db_request.reviewer_id = reviewer_id
         db.commit()
-        db.refresh(request_obj)
-        return request_obj
+        db.refresh(db_request)
+        return db_request

@@ -10,13 +10,14 @@ const api = axios.create({
 });
 
 // Register new user
-export const registerUser = async (name, email, password, role = 'user') => {
+export const registerUser = async (name, email, password, role = 'user', company = 'Company A') => {
   try {
     const response = await api.post('/auth/register', {
       name,
       email,
       password,
-      role
+      role,
+      company
     });
     toast.success('Registration successful! Please login.');
     return response.data;
@@ -55,6 +56,33 @@ export const resetPassword = async (email, password) => {
   } catch (error) {
     console.error('Reset password error:', error);
     toast.error(error.response?.data?.detail || 'Password reset failed');
+    throw error;
+  }
+};
+
+export const verifyCredentials = async (email, password) => {
+  try {
+    const response = await api.post('/auth/login', {
+      email,
+      password
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Verify credentials error:', error);
+    throw error;
+  }
+};
+
+export const updatePassword = async (email, password) => {
+  try {
+    const response = await api.post('/auth/forgot-password', {
+      email,
+      password,
+      confirm_password: password
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Update password error:', error);
     throw error;
   }
 };

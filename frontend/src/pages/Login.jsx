@@ -11,6 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
+  const [company, setCompany] = useState('Company A');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,7 +38,7 @@ const Login = () => {
         setError(result.error || 'Login failed');
       }
     } else {
-      if (!name || !email || !password || !confirmPassword) {
+      if (!name || !email || !password || !confirmPassword || !company) {
         setError('Please fill in all fields');
         setLoading(false);
         return;
@@ -55,7 +56,7 @@ const Login = () => {
         return;
       }
       
-      const result = await register(name, email, password, role);
+      const result = await register(name, email, password, role, company);
       if (result.success) {
         navigate('/dashboard');
       } else {
@@ -94,20 +95,30 @@ const Login = () => {
           )}
 
           {!isLogin && (
-            <div className="form-group">
-              <label>Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
+            <>
+              <div className="form-group">
+                <label>Role</label>
+                <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Company</label>
+                <select value={company} onChange={(e) => setCompany(e.target.value)} disabled={loading}>
+                  <option value="Company A">Company A</option>
+                  <option value="Company B">Company B</option>
+                </select>
+              </div>
+            </>
           )}
-          
+
           <div className="form-group">
-            <label>Email / Name</label>
+            <label>Email</label>
             <input
-              type="text"
-              placeholder="Enter your email or name"
+              type="email"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}

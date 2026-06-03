@@ -21,6 +21,18 @@ class AuthService:
                 print(f"❌ User already exists: {user_data['email']}")
                 return None
             
+            # Normalize company value
+            company_value = user_data.get('company')
+            if company_value:
+                normalized_company = company_value.strip()
+                if normalized_company.lower() in ('company a', 'a', 'company-a', 'company_a'):
+                    normalized_company = 'Company A'
+                elif normalized_company.lower() in ('company b', 'b', 'company-b', 'company_b'):
+                    normalized_company = 'Company B'
+                user_data['company'] = normalized_company
+            else:
+                user_data['company'] = 'Company A'
+
             # Create user
             user_create = UserCreate(**user_data)
             new_user = UserRepository.create(db, user_create)
@@ -66,7 +78,8 @@ class AuthService:
                     "id": user.id,
                     "name": user.name,
                     "email": user.email,
-                    "role": user.role
+                    "role": user.role,
+                    "company": user.company
                 }
             }
         except Exception as e:

@@ -1,0 +1,128 @@
+.companies-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.companies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.companies-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #102a43;
+}
+
+.companies-header p {
+  margin: 4px 0 0;
+  color: #475569;
+}
+
+.companies-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #475569;
+}
+
+.companies-selected {
+  text-align: right;
+}
+
+.companies-selected span {
+  display: block;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.companies-selected strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1rem;
+  color: #102a43;
+}
+
+.companies-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.company-filter-button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.company-filter-button:hover,
+.company-filter-button.active {
+  background: #0b61ff;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.company-card.active {
+  border-color: #0b61ff;
+  box-shadow: 0 12px 32px rgba(11, 97, 255, 0.12);
+}
+
+.companies-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.company-card {
+  background: #f8fbff;
+  border: 1px solid #e5effa;
+  border-radius: 18px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+}
+
+.company-card-header h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #102a43;
+}
+
+.company-card-body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.company-card-body span {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0b61ff;
+}
+
+.company-card-body p {
+  margin: 0;
+  color: #64748b;
+}
+
+@media (max-width: 860px) {
+  .companies-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .companies-grid {
+    grid-template-columns: 1fr;
+  }
+}

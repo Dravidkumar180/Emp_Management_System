@@ -10,7 +10,9 @@ import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
+import RoleRequests from './pages/RoleRequests';
 import Settings from './pages/Settings';
+import Companies from './pages/Companies';
 import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
@@ -68,9 +70,25 @@ function App() {
                 </DashboardLayout>
               </ProtectedRoute>
             } />
-            
+
+            <Route path="/companies" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <Companies />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/role-requests" element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DashboardLayout>
+                  <RoleRequests />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/settings" element={
-              <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <ProtectedRoute>
                 <DashboardLayout>
                   <Settings />
                 </DashboardLayout>

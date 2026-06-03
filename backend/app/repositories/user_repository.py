@@ -52,7 +52,8 @@ class UserRepository:
                 name=normalized_name,
                 email=normalized_email,
                 password=hashed_password,
-                role=user.role
+                role=user.role,
+                company=user.company
             )
             db.add(db_user)
             db.commit()

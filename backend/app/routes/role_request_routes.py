@@ -135,7 +135,7 @@ async def approve_role_request(request_id: int, credentials: HTTPAuthorizationCr
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         print(f'Approve role request error: {exc}')
-        raise HTTPException(status_code=500, detail='Unable to approve request')
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post('/auth/role-requests/{request_id}/reject')
 async def reject_role_request(request_id: int, credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -159,4 +159,4 @@ async def reject_role_request(request_id: int, credentials: HTTPAuthorizationCre
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         print(f'Reject role request error: {exc}')
-        raise HTTPException(status_code=500, detail='Unable to reject request')
+        raise HTTPException(status_code=500, detail=str(exc))

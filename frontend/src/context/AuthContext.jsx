@@ -6,18 +6,28 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
+      const storedCompany = localStorage.getItem('selectedCompany');
+      if (storedCompany) {
+        setSelectedCompany(storedCompany);
+      }
       if (token) {
         const userData = await getCurrentUser(token);
         if (userData) {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
+          if (!storedCompany && userData.company) {
+            setSelectedCompany(userData.company);
+            localStorage.setItem('selectedCompany', userData.company);
+          }
         } else {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          localStorage.removeItem('selectedCompany');
         }
       }
       setLoading(false);
@@ -32,6 +42,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', response.access_token);
         localStorage.setItem('user', JSON.stringify(response.user));
         setUser(response.user);
+        if (response.user.company) {
+          setSelectedCompany(response.user.company);
+          localStorage.setItem('selectedCompany', response.user.company);
+        }
         return { success: true, user: response.user };
       }
       return { success: false, error: 'Invalid credentials' };
@@ -40,9 +54,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role = 'user') => {
+  const updateUserProfile = (profileUpdates) => {
+    const updatedUser = { ...user, ...profileUpdates };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
+  const register = async (name, email, password, role = 'user', company = 'Company A') => {
     try {
-      const response = await registerUser(name, email, password, role);
+      const response = await registerUser(name, email, password, role, company);
       if (response && response.user) {
         // Auto login after registration
         return await login(email, password);
@@ -56,7 +76,9 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('selectedCompany');
     setUser(null);
+    setSelectedCompany(null);
   };
 
   const hasRole = (role) => {
@@ -64,7 +86,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, selectedCompany, setSelectedCompany, login, register, logout, hasRole, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

@@ -54,30 +54,55 @@ const Sidebar = ({ isOpen }) => {
         </svg>
       )
     },
+    {
+      path: '/companies',
+      name: 'Companies',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 5H20V9H4V5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M4 15H20V19H4V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M4 10H20V14H4V10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    },
     { 
       path: '/settings', 
       name: 'Settings', 
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-          <path d="M19.4 15.1L20.5 16.2C20.8 16.5 20.8 17 20.5 17.3L17.3 20.5C17 20.8 16.5 20.8 16.2 20.5L15.1 19.4" stroke="currentColor" strokeWidth="2"/>
-          <path d="M8.9 4.9L7.8 3.8C7.5 3.5 7 3.5 6.7 3.8L3.5 7C3.2 7.3 3.2 7.8 3.5 8.1L4.6 9.2" stroke="currentColor" strokeWidth="2"/>
-          <path d="M4.6 14.8L3.5 15.9C3.2 16.2 3.2 16.7 3.5 17L6.7 20.2C7 20.5 7.5 20.5 7.8 20.2L8.9 19.1" stroke="currentColor" strokeWidth="2"/>
-          <path d="M19.4 8.9L20.5 7.8C20.8 7.5 20.8 7 20.5 6.7L17.3 3.5C17 3.2 16.5 3.2 16.2 3.5L15.1 4.6" stroke="currentColor" strokeWidth="2"/>
+          <path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.27 16.88l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.7 0 1.27-.5 1.47-1.2.2-.7-.04-1.44-.54-1.94L3.38 3.86A2 2 0 1 1 6.21.03l.06.06c.5.5 1.24.74 1.94.54.7-.2 1.2-.77 1.2-1.47V.01A2 2 0 1 1 13 .01v.09c0 .7.5 1.27 1.2 1.47.7.2 1.44-.04 1.94-.54l.06-.06A2 2 0 1 1 21 3.86l-.06.06c-.5.5-.74 1.24-.54 1.94.2.7.77 1.2 1.47 1.2H21a2 2 0 1 1 0 4h-.09c-.7 0-1.27.5-1.47 1.2-.2.7.04 1.44.54 1.94l.06.06A2 2 0 0 1 19.4 15z" stroke="currentColor" strokeWidth="1"/>
         </svg>
       )
     },
   ];
 
-  const visibleMenuItems = authUser?.role === 'admin'
-    ? menuItems
-    : menuItems.filter((item) => ['/dashboard', '/employees', '/settings'].includes(item.path));
+  const getUserRole = () => {
+    try {
+      if (authUser && authUser.role) return authUser.role;
+      const saved = localStorage.getItem('user');
+      if (saved) return JSON.parse(saved)?.role;
+    } catch (e) {
+      console.error('Error parsing user role from storage', e);
+    }
+    return 'user';
+  };
+
+  const userRole = getUserRole();
+  const visibleMenuItems = menuItems.filter(item => {
+    // admin-only items
+    if (item.path === '/departments' || item.path === '/attendance' || item.path === '/companies' || item.path === '/role-requests') {
+      return userRole === 'admin';
+    }
+    // everyone can see dashboard, employees, and settings
+    return true;
+  }); // show menu depending on role
 
   // Safe function to get user initials
   const getUserInitials = () => {
     try {
-      if (user && user.name) {
-        return user.name.charAt(0).toUpperCase();
+      if (authUser && authUser.name) {
+        return authUser.name.charAt(0).toUpperCase();
       }
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
@@ -95,11 +120,11 @@ const Sidebar = ({ isOpen }) => {
   // Safe function to get user name
   const getUserName = () => {
     try {
-      if (user && user.name) {
-        return user.name;
+      if (authUser && authUser.name) {
+        return authUser.name;
       }
-      if (user && user.email) {
-        return user.email.split('@')[0];
+      if (authUser && authUser.email) {
+        return authUser.email.split('@')[0];
       }
       const savedUser = localStorage.getItem('user');
       if (savedUser) {

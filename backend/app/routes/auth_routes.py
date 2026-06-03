@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from app.controllers.auth_controller import AuthController
 from app.repositories.user_repository import UserRepository
 from app.database.database import SessionLocal
@@ -14,6 +15,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: str = "user"
+    company: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: str
@@ -82,7 +84,8 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "company": user.company
         }
     finally:
         db.close()
