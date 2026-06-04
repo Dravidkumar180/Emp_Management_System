@@ -3,8 +3,10 @@ import { getAllEmployees, createEmployee, updateEmployee, deleteEmployee } from 
 import { Toaster, toast } from 'react-hot-toast';
 import './Employees.css';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
 
 const Employees = () => {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,6 +30,8 @@ const Employees = () => {
 
   const itemsPerPage = 5;
   const statusOptions = ['Active', 'Remote', 'On Leave', 'Inactive'];
+  const currentCompanyId = user?.companyId || 'company-a';
+  const currentCompanyName = currentCompanyId === 'company-b' ? 'Company B' : 'Company A';
 
   // Load employees
   const loadEmployees = useCallback(async () => {
@@ -48,11 +52,13 @@ const Employees = () => {
     loadEmployees();
   }, [loadEmployees]);
 
+  const companyEmployees = employees.filter(emp => (emp.companyId || 'company-a') === currentCompanyId);
+
   // Get unique departments
-  const departments = ['All Departments', ...new Set(employees.map(emp => emp.department))];
+  const departments = ['All Departments', ...new Set(companyEmployees.map(emp => emp.department))];
 
   // Filter employees
-  const filteredEmployees = employees.filter(emp => {
+  const filteredEmployees = companyEmployees.filter(emp => {
     const matchesSearch = searchTerm === '' || 
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -133,7 +139,8 @@ const Employees = () => {
         status: formData.status,
         phone: formData.phone || '',
         location: formData.location || '',
-        joinDate: formData.joinDate || new Date().toISOString().split('T')[0]
+        joinDate: formData.joinDate || new Date().toISOString().split('T')[0],
+        companyId: currentCompanyId
       };
       await createEmployee(employeeToAdd);
       await loadEmployees();
@@ -227,8 +234,8 @@ const Employees = () => {
       {/* Header */}
       <div className="page-header">
         <h1>Employees</h1>
-        <p className="page-description">Manage your team members, search, and filter by department.</p>
-        <p className="db-status">📊 Total: {employees.length} employees</p>
+        <p className="page-description">Manage {currentCompanyName} team members, search, and filter by department.</p>
+        <p className="db-status">Total: {companyEmployees.length} employees in {currentCompanyName}</p>
       </div>
 
       {/* Search Bar */}

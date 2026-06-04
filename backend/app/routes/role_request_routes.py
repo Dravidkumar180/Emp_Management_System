@@ -27,9 +27,6 @@ async def create_role_request(data: RoleRequestCreateBody, credentials: HTTPAuth
     if not requester_email:
         raise HTTPException(status_code=401, detail='Invalid token')
 
-    if payload.get('role') != 'user':
-        raise HTTPException(status_code=403, detail='Only user accounts can submit role requests')
-
     try:
         request_obj = RoleRequestController.submit_role_request(requester_email, data.current_password, data.admin_email)
         return {
@@ -89,9 +86,6 @@ async def list_pending_role_requests(credentials: HTTPAuthorizationCredentials =
         raise HTTPException(status_code=401, detail='Invalid token')
 
     admin_email = payload.get('sub')
-    if payload.get('role') != 'admin':
-        raise HTTPException(status_code=403, detail='Only admins can view pending role requests')
-
     try:
         requests = RoleRequestController.get_pending_requests(admin_email)
         return [
@@ -121,9 +115,6 @@ async def approve_role_request(request_id: int, credentials: HTTPAuthorizationCr
         raise HTTPException(status_code=401, detail='Invalid token')
 
     admin_email = payload.get('sub')
-    if payload.get('role') != 'admin':
-        raise HTTPException(status_code=403, detail='Only admins can approve role requests')
-
     try:
         request_obj = RoleRequestController.approve_request(request_id, admin_email)
         return {
@@ -145,9 +136,6 @@ async def reject_role_request(request_id: int, credentials: HTTPAuthorizationCre
         raise HTTPException(status_code=401, detail='Invalid token')
 
     admin_email = payload.get('sub')
-    if payload.get('role') != 'admin':
-        raise HTTPException(status_code=403, detail='Only admins can reject role requests')
-
     try:
         request_obj = RoleRequestController.reject_request(request_id, admin_email)
         return {

@@ -10,6 +10,7 @@ const transformUserToEmployee = (user) => {
   const roles = ['Marketing Specialist', 'Data Scientist', 'Product Manager', 'HR Manager', 'UI/UX Designer', 'Frontend Developer', 'Sales Executive', 'Financial Analyst'];
   
   const index = (user.id - 1) % departments.length;
+  const companyId = user.id <= 5 ? 'company-a' : 'company-b';
   
   return {
     id: user.id,
@@ -18,7 +19,9 @@ const transformUserToEmployee = (user) => {
     username: user.username,
     phone: user.phone,
     website: user.website,
-    company: user.company?.name || 'Unknown',
+    company: companyId === 'company-a' ? 'Company A' : 'Company B',
+    companyId,
+    sourceCompany: user.company?.name || 'Unknown',
     department: departments[index],
     status: statuses[index],
     role: roles[index],
@@ -66,6 +69,8 @@ export const getAllEmployees = async () => {
 export const createEmployee = async (employeeData) => {
   try {
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const companyId = employeeData.companyId || currentUser.companyId || 'company-a';
     const newId = Date.now(); // Unique ID
     
     const newEmployee = {
@@ -74,7 +79,8 @@ export const createEmployee = async (employeeData) => {
       email: employeeData.email,
       username: employeeData.name.toLowerCase().replace(/\s/g, '.'),
       phone: employeeData.phone || '+1 (555) 000-0000',
-      company: 'New Company',
+      company: companyId === 'company-a' ? 'Company A' : 'Company B',
+      companyId,
       department: employeeData.department,
       status: employeeData.status,
       role: employeeData.role,

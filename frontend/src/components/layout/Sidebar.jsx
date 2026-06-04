@@ -57,7 +57,7 @@ const Sidebar = () => {
           <path d="M15 14L12 17M9 14L12 17M12 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       ),
-      roles: ['super_admin', 'admin', 'user']
+      roles: ['super_admin', 'admin']
     },
     { 
       path: '/companies', 
@@ -71,7 +71,7 @@ const Sidebar = () => {
           <line x1="19" y1="12" x2="17" y2="12" stroke="currentColor" strokeWidth="2"/>
         </svg>
       ),
-      roles: ['super_admin']  // Only Super Admin can see Companies page
+      roles: ['super_admin', 'admin']
     },
     { 
       path: '/settings', 
@@ -85,7 +85,7 @@ const Sidebar = () => {
           <path d="M19.4 8.9L20.5 7.8C20.8 7.5 20.8 7 20.5 6.7L17.3 3.5C17 3.2 16.5 3.2 16.2 3.5L15.1 4.6" stroke="currentColor" strokeWidth="2"/>
         </svg>
       ),
-      roles: ['super_admin', 'admin']
+      roles: ['super_admin', 'admin', 'user']
     },
   ];
 

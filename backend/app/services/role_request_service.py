@@ -81,12 +81,12 @@ class RoleRequestService:
             if role_request.status != 'pending':
                 raise ValueError('Request has already been reviewed')
 
-            user = UserRepository.get_by_id(db, role_request.requester_id)
-            if not user:
-                raise ValueError('Requesting user not found')
+            requester = UserRepository.get_by_id(db, role_request.requester_id)
+            if not requester:
+                raise ValueError('Requester not found')
 
+            requester.role = 'user'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'approved', reviewer_id=admin_user.id)
-            UserRepository.update_role(db, user.id, 'admin')
             return updated_request
         finally:
             db.close()
@@ -110,6 +110,11 @@ class RoleRequestService:
             if role_request.status != 'pending':
                 raise ValueError('Request has already been reviewed')
 
+            requester = UserRepository.get_by_id(db, role_request.requester_id)
+            if not requester:
+                raise ValueError('Requester not found')
+
+            requester.role = 'user'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'rejected', reviewer_id=admin_user.id)
             return updated_request
         finally:

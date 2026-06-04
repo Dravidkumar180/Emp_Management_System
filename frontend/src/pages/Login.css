@@ -69,7 +69,8 @@
   font-weight: 500;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
@@ -80,7 +81,8 @@
   transition: all 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: #4f46e5;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
@@ -186,12 +188,14 @@
   background: #1e293b;
 }
 
-[data-theme="dark"] .form-group input {
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select {
   background: #334155;
   border-color: #475569;
 }
 
-[data-theme="dark"] .form-group input:focus {
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus {
   border-color: #4f46e5;
 }
 

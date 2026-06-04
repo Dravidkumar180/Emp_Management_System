@@ -1,327 +1,270 @@
-import React, { useState, useEffect } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
-import { Toaster, toast } from 'react-hot-toast';
+import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import './Companies.css';
 
+const COMPANIES = [
+  { id: 'company-a', name: 'Company A', access: 'Current company' },
+  { id: 'company-b', name: 'Company B', access: 'Isolated tenant' },
+];
+
 const Companies = () => {
-    const [companies, setCompanies] = useState([]);
-    const [currentCompany, setCurrentCompany] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [editingCompany, setEditingCompany] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        website: '',
-        subscription_plan: 'basic'
+  const [employees, setEmployees] = useState([]);
+  const [customCompanies, setCustomCompanies] = useState([]);
+  const [activeCompanyId, setActiveCompanyId] = useState('company-a');
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    slug: '',
+    access: '',
+  });
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('https://jsonplaceholder.typicode.com/users');
+
+        if (!response.ok) {
+          throw new Error('Unable to load employees');
+        }
+
+        const data = await response.json();
+        setEmployees(data);
+      } catch (error) {
+        toast.error('Failed to fetch company employees');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  const companies = useMemo(() => {
+    const midpoint = Math.ceil(employees.length / 2);
+    const splitEmployees = {
+      'company-a': employees.slice(0, midpoint),
+      'company-b': employees.slice(midpoint),
+    };
+
+    const defaultCompanies = COMPANIES.map((company) => ({
+      ...company,
+      employees: splitEmployees[company.id],
+      users: splitEmployees[company.id].length,
+    }));
+
+    return [...defaultCompanies, ...customCompanies];
+  }, [customCompanies, employees]);
+
+  const activeCompany = companies.find((company) => company.id === activeCompanyId) || companies[0];
+  const isAddCompanyValid = formData.name.trim() && formData.slug.trim() && formData.access;
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      slug: '',
+      access: '',
     });
+  };
 
-    useEffect(() => {
-        fetchCompanies();
-        fetchCurrentCompany();
-    }, []);
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    resetForm();
+  };
 
-    const fetchCompanies = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch('/api/v1/companies', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setCompanies(data);
-                // Fetch stats for each company
-                data.forEach(company => {
-                    fetchCompanyStats(company.id);
-                });
-            }
-        } catch (error) {
-            toast.error('Failed to fetch companies');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleAddCompany = (event) => {
+    event.preventDefault();
 
-    const fetchCompanyStats = async (companyId) => {
-        try {
-            const response = await fetch(`/api/v1/companies/${companyId}/stats`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setCompanies(prev => prev.map(c => 
-                    c.id === companyId ? { ...c, stats: data } : c
-                ));
-            }
-        } catch (error) {
-            console.error('Error fetching stats:', error);
-        }
-    };
+    if (!isAddCompanyValid) return;
 
-    const fetchCurrentCompany = async () => {
-        try {
-            const response = await fetch('/api/v1/companies/my-company', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setCurrentCompany(data);
-            }
-        } catch (error) {
-            console.error('Error fetching current company:', error);
-        }
-    };
+    const slug = formData.slug.trim().toLowerCase().replace(/\s+/g, '-');
+    const alreadyExists = companies.some((company) => company.id === slug);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const url = editingCompany 
-                ? `/api/v1/companies/${editingCompany.id}`
-                : '/api/v1/companies';
-            const method = editingCompany ? 'PUT' : 'POST';
-            
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify(formData)
-            });
-            
-            if (response.ok) {
-                toast.success(editingCompany ? 'Company updated!' : 'Company created!');
-                fetchCompanies();
-                setShowAddModal(false);
-                setEditingCompany(null);
-                resetForm();
-            } else {
-                const error = await response.json();
-                toast.error(error.detail || 'Operation failed');
-            }
-        } catch (error) {
-            toast.error('Network error');
-        }
-    };
-
-    const handleSwitchCompany = async (companyId) => {
-        try {
-            const response = await fetch(`/api/v1/companies/switch/${companyId}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('token', data.access_token);
-                toast.success(data.message);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            }
-        } catch (error) {
-            toast.error('Failed to switch company');
-        }
-    };
-
-    const resetForm = () => {
-        setFormData({
-            name: '',
-            email: '',
-            phone: '',
-            address: '',
-            website: '',
-            subscription_plan: 'basic'
-        });
-    };
-
-    const editCompany = (company) => {
-        setEditingCompany(company);
-        setFormData({
-            name: company.name,
-            email: company.email || '',
-            phone: company.phone || '',
-            address: company.address || '',
-            website: company.website || '',
-            subscription_plan: company.subscription_plan
-        });
-        setShowAddModal(true);
-    };
-
-    if (loading) {
-        return (
-            <DashboardLayout>
-                <div className="loading-spinner">
-                    <div className="spinner"></div>
-                    <p>Loading companies...</p>
-                </div>
-            </DashboardLayout>
-        );
+    if (alreadyExists) {
+      toast.error('A company with this slug already exists');
+      return;
     }
 
+    const newCompany = {
+      id: slug,
+      name: formData.name.trim(),
+      access: formData.access,
+      employees: [],
+      users: 0,
+    };
+
+    setCustomCompanies((prev) => [...prev, newCompany]);
+    setActiveCompanyId(newCompany.id);
+    toast.success('Company added');
+    closeAddModal();
+  };
+
+  if (loading) {
     return (
-        <DashboardLayout>
-            <div className="companies-page">
-                <Toaster position="top-right" />
-                
-                {/* Header */}
-                <div className="companies-header">
-                    <div>
-                        <h1>Companies</h1>
-                        <p>Manage all companies in the system</p>
-                    </div>
-                    <button className="add-company-btn" onClick={() => setShowAddModal(true)}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 5v14M5 12h14" />
-                        </svg>
-                        Add Company
-                    </button>
-                </div>
-
-                {/* Companies Table */}
-                <div className="companies-table-container">
-                    <table className="companies-table">
-                        <thead>
-                            <tr>
-                                <th>Company</th>
-                                <th>Employees</th>
-                                <th>Users</th>
-                                <th>Plan</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {companies.map(company => {
-                                const stats = company.stats || {};
-                                const isCurrentCompany = currentCompany?.id === company.id;
-                                
-                                return (
-                                    <tr key={company.id} className={isCurrentCompany ? 'current-company' : ''}>
-                                        <td>
-                                            <div className="company-info">
-                                                <div className="company-avatar">
-                                                    {company.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div className="company-name">{company.name}</div>
-                                                    <div className="company-slug">{company.slug || company.name.toLowerCase().replace(/\s/g, '-')}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="stats-cell">
-                                            <span className="stat-number">{stats.total_employees || 0}</span>
-                                        </td>
-                                        <td className="stats-cell">
-                                            <span className="stat-number">{stats.total_users || 0}</span>
-                                        </td>
-                                        <td>
-                                            <span className={`plan-badge ${company.subscription_plan}`}>
-                                                {company.subscription_plan}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge ${company.is_active ? 'active' : 'inactive'}`}>
-                                                {company.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td className="actions-cell">
-                                            {!isCurrentCompany && company.is_active && (
-                                                <button 
-                                                    className="switch-btn"
-                                                    onClick={() => handleSwitchCompany(company.id)}
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                                        <polyline points="16 17 21 12 16 7" />
-                                                        <line x1="21" y1="12" x2="9" y2="12" />
-                                                    </svg>
-                                                    Switch
-                                                </button>
-                                            )}
-                                            <button 
-                                                className="edit-btn-small"
-                                                onClick={() => editCompany(company)}
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M17 3l4 4-7 7H10v-4l7-7z" />
-                                                    <path d="M4 20h16" />
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Add/Edit Modal */}
-                {showAddModal && (
-                    <div className="modal-overlay" onClick={() => { setShowAddModal(false); setEditingCompany(null); resetForm(); }}>
-                        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-                            <div className="modal-header">
-                                <h2>{editingCompany ? 'Edit Company' : 'Add New Company'}</h2>
-                                <button className="modal-close" onClick={() => { setShowAddModal(false); setEditingCompany(null); resetForm(); }}>×</button>
-                            </div>
-                            <form onSubmit={handleSubmit}>
-                                <div className="modal-body">
-                                    <div className="form-group">
-                                        <label>Company Name *</label>
-                                        <input 
-                                            type="text" 
-                                            value={formData.name} 
-                                            onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                                            required 
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Email</label>
-                                        <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
-                                    </div>
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label>Phone</label>
-                                            <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Website</label>
-                                            <input type="text" value={formData.website} onChange={(e) => setFormData({...formData, website: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Address</label>
-                                        <textarea rows="2" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>Subscription Plan</label>
-                                        <select value={formData.subscription_plan} onChange={(e) => setFormData({...formData, subscription_plan: e.target.value})}>
-                                            <option value="basic">Basic</option>
-                                            <option value="premium">Premium</option>
-                                            <option value="enterprise">Enterprise</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="modal-footer">
-                                    <button type="button" className="cancel-btn" onClick={() => { setShowAddModal(false); setEditingCompany(null); resetForm(); }}>Cancel</button>
-                                    <button type="submit" className="submit-btn">{editingCompany ? 'Update' : 'Create'}</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </DashboardLayout>
+      <div className="loading-spinner">
+        <div className="spinner"></div>
+        <p>Loading companies...</p>
+      </div>
     );
+  }
+
+  return (
+    <div className="companies-page">
+      <div className="companies-topbar">
+        <div className="company-tabs" aria-label="Company views">
+          <button className="company-tab active" type="button">
+            Companies
+          </button>
+          {companies.map((company) => (
+            <button
+              key={company.id}
+              className={`company-tab ${activeCompanyId === company.id ? 'active' : ''}`}
+              type="button"
+              onClick={() => setActiveCompanyId(company.id)}
+            >
+              {company.name}
+            </button>
+          ))}
+        </div>
+        <button className="add-company-trigger" type="button" onClick={() => setShowAddModal(true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Add Company
+        </button>
+      </div>
+
+      <div className="companies-intro">
+        <p>
+          Companies are configured in EEMS. Your workspace: <strong>{activeCompany.name}</strong>
+        </p>
+      </div>
+
+      <div className="companies-table-container">
+        <table className="companies-table">
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Employees</th>
+              <th>Users</th>
+              <th>Your Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            {companies.map((company) => (
+              <tr
+                key={company.id}
+                className={activeCompanyId === company.id ? 'current-company' : ''}
+                onClick={() => setActiveCompanyId(company.id)}
+              >
+                <td>{company.id}</td>
+                <td>{company.employees.length}</td>
+                <td>{company.users}</td>
+                <td>
+                  <span className={company.access === 'Current company' ? 'access-current' : 'access-muted'}>
+                    {company.access}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <section className="company-employees">
+        <div className="company-employees-header">
+          <h2>{activeCompany.name} Employees</h2>
+          <span>{activeCompany.employees.length} employees</span>
+        </div>
+
+        <div className="employee-grid">
+          {activeCompany.employees.length === 0 ? (
+            <div className="empty-employees">No employees assigned to this company yet.</div>
+          ) : activeCompany.employees.map((employee) => (
+            <article className="employee-card" key={employee.id}>
+              <div className="employee-avatar">{employee.name.charAt(0)}</div>
+              <div>
+                <h3>{employee.name}</h3>
+                <p>{employee.email}</p>
+                <span>{employee.company?.name}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {showAddModal && (
+        <div className="modal-overlay" onClick={closeAddModal}>
+          <div className="modal-container" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Add Company</h2>
+              <button className="modal-close" type="button" onClick={closeAddModal} aria-label="Close add company form">
+                x
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCompany}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label htmlFor="company-name">
+                    Company Name <span className="required-mark">*</span>
+                  </label>
+                  <input
+                    id="company-name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Enter company name"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="company-slug">
+                    Slug <span className="required-mark">*</span>
+                  </label>
+                  <input
+                    id="company-slug"
+                    type="text"
+                    value={formData.slug}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, slug: event.target.value }))}
+                    placeholder="company-c"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="company-access">
+                    Your Access <span className="required-mark">*</span>
+                  </label>
+                  <select
+                    id="company-access"
+                    value={formData.access}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, access: event.target.value }))}
+                    required
+                  >
+                    <option value="">Select access</option>
+                    <option value="Current company">Current company</option>
+                    <option value="Isolated tenant">Isolated tenant</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="cancel-btn" type="button" onClick={closeAddModal}>
+                  Cancel
+                </button>
+                <button className="submit-btn" type="submit" disabled={!isAddCompanyValid}>
+                  Add Company
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Companies;

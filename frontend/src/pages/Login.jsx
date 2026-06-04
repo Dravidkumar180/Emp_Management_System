@@ -11,12 +11,17 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
+  const [companyId, setCompanyId] = useState('company-a');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { login, register } = useAuth();
   const navigate = useNavigate();
+
+  const navigateByRole = (userData) => {
+    navigate(userData?.role === 'admin' ? '/settings' : '/dashboard');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +37,7 @@ const Login = () => {
       
       const result = await login(email, password);
       if (result.success) {
-        navigate('/dashboard');
+        navigateByRole(result.user);
       } else {
         setError(result.error || 'Login failed');
       }
@@ -55,9 +60,9 @@ const Login = () => {
         return;
       }
       
-      const result = await register(name, email, password, role);
+      const result = await register(name, email, password, role, companyId);
       if (result.success) {
-        navigate('/dashboard');
+        navigateByRole(result.user);
       } else {
         setError(result.error || 'Registration failed');
       }
@@ -99,6 +104,16 @@ const Login = () => {
               <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
+              </select>
+            </div>
+          )}
+
+          {!isLogin && (
+            <div className="form-group">
+              <label>Company</label>
+              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={loading}>
+                <option value="company-a">Company A</option>
+                <option value="company-b">Company B</option>
               </select>
             </div>
           )}
@@ -174,6 +189,8 @@ const Login = () => {
                 setEmail('');
                 setPassword('');
                 setConfirmPassword('');
+                setRole('user');
+                setCompanyId('company-a');
               }}
             >
               {isLogin ? 'Sign up' : 'Log in'}

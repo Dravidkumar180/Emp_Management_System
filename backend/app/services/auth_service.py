@@ -14,6 +14,7 @@ class AuthService:
 # Normalize email and name for lookup and create
             user_data['email'] = user_data['email'].strip().lower()
             user_data['name'] = user_data['name'].strip()
+            user_data['role'] = user_data.get('role', 'user').strip().lower()
 
             # Check if user exists
             existing = UserRepository.get_by_email(db, user_data['email'])

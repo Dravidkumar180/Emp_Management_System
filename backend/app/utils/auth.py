@@ -81,9 +81,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        # Add company info to user object from token payload
+        # Add company info to user object from token payload. Keep role from DB so
+        # stale tokens cannot upgrade or downgrade the current account.
         user.company_id = payload.get("company_id")
-        user.role = payload.get("role", user.role)
         
         return user
     finally:

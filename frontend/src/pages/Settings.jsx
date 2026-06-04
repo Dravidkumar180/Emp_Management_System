@@ -68,6 +68,19 @@ const Settings = () => {
     fontSize: 'medium'
   });
 
+  const [profileSettings, setProfileSettings] = useState({
+    displayName: user?.name || '',
+    email: user?.email || '',
+    company: user?.companyId === 'company-b' ? 'Company B' : 'Company A'
+  });
+
+  const [securitySettings, setSecuritySettings] = useState({
+    loginAlerts: true,
+    twoFactorAuth: false,
+    rememberDevice: true,
+    sessionTimeout: true
+  });
+
   const [activeTab, setActiveTab] = useState('roleRequest');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -162,6 +175,45 @@ const Settings = () => {
     }
   };
 
+  const persistUserSettings = (updates = {}) => {
+    const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    localStorage.setItem('appSettings', JSON.stringify({
+      ...savedSettings,
+      notifications: updates.notifications || notificationSettings,
+      appearance: updates.appearance || appearanceSettings,
+      profile: updates.profile || profileSettings,
+      security: updates.security || securitySettings
+    }));
+  };
+
+  const handleProfileChange = (key, value) => {
+    const nextProfile = { ...profileSettings, [key]: value };
+    setProfileSettings(nextProfile);
+    persistUserSettings({ profile: nextProfile });
+  };
+
+  const handleSecurityChange = (key, value) => {
+    const nextSecurity = { ...securitySettings, [key]: value };
+    setSecuritySettings(nextSecurity);
+    persistUserSettings({ security: nextSecurity });
+  };
+
+  const handleUserNotificationChange = (key, value) => {
+    const nextNotifications = { ...notificationSettings, [key]: value };
+    setNotificationSettings(nextNotifications);
+    persistUserSettings({ notifications: nextNotifications });
+  };
+
+  const handleUserAppearanceChange = (key, value) => {
+    const nextAppearance = { ...appearanceSettings, [key]: value };
+    setAppearanceSettings(nextAppearance);
+    persistUserSettings({ appearance: nextAppearance });
+
+    if (key === 'theme' && value !== appearanceSettings.theme) {
+      toggleDarkMode();
+    }
+  };
+
   const saveAllSettings = () => {
     setSaving(true);
     // Simulate saving to backend
@@ -200,6 +252,8 @@ const Settings = () => {
         if (parsed.leave) setLeaveSettings(parsed.leave);
         if (parsed.report) setReportSettings(parsed.report);
         if (parsed.appearance) setAppearanceSettings(parsed.appearance);
+        if (parsed.profile) setProfileSettings(parsed.profile);
+        if (parsed.security) setSecuritySettings(parsed.security);
       } catch (e) {
         console.error('Error loading settings:', e);
       }
@@ -214,6 +268,545 @@ const Settings = () => {
     { id: 'report', name: 'Reports' },
     { id: 'appearance', name: 'Appearance' }
   ];
+
+  if (!isAdmin) {
+    const userTabs = [
+      { id: 'profile', name: 'Profile', icon: 'P' },
+      { id: 'security', name: 'Security', icon: 'S' },
+      { id: 'appearance', name: 'Appearance', icon: 'A' },
+      { id: 'notifications', name: 'Notifications', icon: 'N' },
+      { id: 'roleRequest', name: 'Role Request', icon: 'R' }
+    ];
+
+    return (
+      <div className="settings-page user-settings-page">
+        <div className="settings-header">
+          <h1>Settings</h1>
+          <p>Manage your account preferences and system configuration.</p>
+        </div>
+
+        <div className="user-settings-shell">
+          <aside className="user-settings-tabs">
+            {userTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`user-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span>{tab.icon}</span>
+                {tab.name}
+              </button>
+            ))}
+          </aside>
+
+          <main className="user-settings-content">
+            {activeTab === 'roleRequest' && (
+              <section className="user-role-request">
+                <h2>Role Request</h2>
+                <p>Request an upgrade to the Admin role.</p>
+
+                <form className="role-request-form" onSubmit={handleRoleRequest}>
+                  <div className="setting-field full-width">
+                    <label htmlFor="currentPassword">Current Password</label>
+                    <input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="setting-field full-width">
+                    <label htmlFor="adminEmail">Admin Email</label>
+                    <input
+                      id="adminEmail"
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      placeholder="admin@example.com"
+                      required
+                    />
+                    <small>Enter the email address of the Admin who will review your request.</small>
+                  </div>
+
+                  {requestMessage && <div className="role-request-message">{requestMessage}</div>}
+
+                  <button
+                    className="submit-request-btn"
+                    type="submit"
+                    disabled={requestLoading || !currentPassword.trim() || !adminEmail.trim()}
+                  >
+                    <span>R</span>
+                    {requestLoading ? 'Submitting...' : 'Submit Request'}
+                  </button>
+                </form>
+              </section>
+            )}
+
+            {activeTab === 'profile' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Profile</h2>
+                <p>Update the account details shown across your workspace.</p>
+
+                <div className="settings-grid">
+                  <div className="setting-field full-width">
+                    <label htmlFor="displayName">Display Name</label>
+                    <input
+                      id="displayName"
+                      type="text"
+                      value={profileSettings.displayName}
+                      onChange={(e) => handleProfileChange('displayName', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-field full-width">
+                    <label htmlFor="profileEmail">Email</label>
+                    <input
+                      id="profileEmail"
+                      type="email"
+                      value={profileSettings.email}
+                      onChange={(e) => handleProfileChange('email', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-field full-width">
+                    <label htmlFor="profileCompany">Company</label>
+                    <input
+                      id="profileCompany"
+                      type="text"
+                      value={profileSettings.company}
+                      onChange={(e) => handleProfileChange('company', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'security' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Security</h2>
+                <p>Control account protection and login safeguards.</p>
+
+                <div className="settings-list">
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Login Alerts</span>
+                      <span className="toggle-desc">Notify me when a new login is detected</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={securitySettings.loginAlerts}
+                        onChange={(e) => handleSecurityChange('loginAlerts', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Two-Factor Authentication</span>
+                      <span className="toggle-desc">Require a second verification step during login</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={securitySettings.twoFactorAuth}
+                        onChange={(e) => handleSecurityChange('twoFactorAuth', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Remember Device</span>
+                      <span className="toggle-desc">Keep trusted devices signed in for longer</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={securitySettings.rememberDevice}
+                        onChange={(e) => handleSecurityChange('rememberDevice', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Session Timeout</span>
+                      <span className="toggle-desc">Automatically sign out after inactivity</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={securitySettings.sessionTimeout}
+                        onChange={(e) => handleSecurityChange('sessionTimeout', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'appearance' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Appearance</h2>
+                <p>Adjust how the dashboard looks and feels.</p>
+
+                <div className="settings-list">
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Dark Mode</span>
+                      <span className="toggle-desc">Switch between light and dark interface colors</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={appearanceSettings.theme === 'dark'}
+                        onChange={(e) => handleUserAppearanceChange('theme', e.target.checked ? 'dark' : 'light')}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Compact View</span>
+                      <span className="toggle-desc">Reduce spacing to show more content on screen</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={appearanceSettings.compactView}
+                        onChange={(e) => handleUserAppearanceChange('compactView', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Show Avatars</span>
+                      <span className="toggle-desc">Display user and employee avatars</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={appearanceSettings.showAvatars}
+                        onChange={(e) => handleUserAppearanceChange('showAvatars', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Animations</span>
+                      <span className="toggle-desc">Enable smooth transitions and motion</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={appearanceSettings.animationsEnabled}
+                        onChange={(e) => handleUserAppearanceChange('animationsEnabled', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'notifications' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Notifications</h2>
+                <p>Choose which updates should reach you.</p>
+
+                <div className="settings-list">
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Email Notifications</span>
+                      <span className="toggle-desc">Receive important updates by email</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.emailNotifications}
+                        onChange={(e) => handleUserNotificationChange('emailNotifications', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Push Notifications</span>
+                      <span className="toggle-desc">Show browser notifications for live updates</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.pushNotifications}
+                        onChange={(e) => handleUserNotificationChange('pushNotifications', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">New Employee Alerts</span>
+                      <span className="toggle-desc">Notify me when team members are added</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.newEmployeeAlerts}
+                        onChange={(e) => handleUserNotificationChange('newEmployeeAlerts', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Weekly Reports</span>
+                      <span className="toggle-desc">Receive a weekly summary of activity</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.weeklyReports}
+                        onChange={(e) => handleUserNotificationChange('weeklyReports', e.target.checked)}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  const adminTabs = [
+    { id: 'profile', name: 'Profile', icon: 'P' },
+    { id: 'security', name: 'Security', icon: 'S' },
+    { id: 'appearance', name: 'Appearance', icon: 'A' },
+    { id: 'notifications', name: 'Notifications', icon: 'N' },
+    { id: 'roleRequest', name: 'Approvals', icon: '✓' }
+  ];
+
+  if (isAdmin) {
+    return (
+      <div className="settings-page user-settings-page">
+        <div className="settings-header">
+          <h1>Settings</h1>
+          <p>Manage your account preferences and system configuration.</p>
+        </div>
+
+        <div className="user-settings-shell">
+          <aside className="user-settings-tabs">
+            {adminTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`user-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span>{tab.icon}</span>
+                {tab.name}
+              </button>
+            ))}
+          </aside>
+
+          <main className="user-settings-content">
+            {activeTab === 'roleRequest' && (
+              <section className="user-role-request admin-approvals-panel">
+                <h2>Role Approvals</h2>
+                <p>Manage pending role upgrade requests.</p>
+
+                {requestsLoading ? (
+                  <div className="role-requests-loading">Loading approvals...</div>
+                ) : requests.length === 0 ? (
+                  <div className="role-requests-empty">No pending approvals.</div>
+                ) : (
+                  <div className="approval-list">
+                    {requests.map((request) => (
+                      <div key={request.id} className="approval-row">
+                        <div className="approval-user">
+                          <strong>{request.requester_email.split('@')[0]}</strong>
+                          <span>{request.requester_email}</span>
+                        </div>
+                        <div className="approval-actions">
+                          <button
+                            className="approval-approve"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleAdminAction(request.id, 'approve')}
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            className="approval-reject"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleAdminAction(request.id, 'reject')}
+                          >
+                            ⊗ Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {requestsMessage && <div className="role-request-message">{requestsMessage}</div>}
+              </section>
+            )}
+
+            {activeTab === 'profile' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Profile</h2>
+                <p>Update the admin account details shown across your workspace.</p>
+
+                <div className="settings-grid">
+                  <div className="setting-field full-width">
+                    <label htmlFor="adminDisplayName">Display Name</label>
+                    <input
+                      id="adminDisplayName"
+                      type="text"
+                      value={profileSettings.displayName}
+                      onChange={(e) => handleProfileChange('displayName', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-field full-width">
+                    <label htmlFor="adminProfileEmail">Email</label>
+                    <input
+                      id="adminProfileEmail"
+                      type="email"
+                      value={profileSettings.email}
+                      onChange={(e) => handleProfileChange('email', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-field full-width">
+                    <label htmlFor="adminProfileCompany">Company</label>
+                    <input
+                      id="adminProfileCompany"
+                      type="text"
+                      value={profileSettings.company}
+                      onChange={(e) => handleProfileChange('company', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'security' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Security</h2>
+                <p>Control admin account protection and login safeguards.</p>
+
+                <div className="settings-list">
+                  {[
+                    ['loginAlerts', 'Login Alerts', 'Notify me when a new login is detected'],
+                    ['twoFactorAuth', 'Two-Factor Authentication', 'Require a second verification step during login'],
+                    ['rememberDevice', 'Remember Device', 'Keep trusted devices signed in for longer'],
+                    ['sessionTimeout', 'Session Timeout', 'Automatically sign out after inactivity']
+                  ].map(([key, label, desc]) => (
+                    <div className="setting-toggle" key={key}>
+                      <div className="toggle-info">
+                        <span className="toggle-label">{label}</span>
+                        <span className="toggle-desc">{desc}</span>
+                      </div>
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={securitySettings[key]}
+                          onChange={(e) => handleSecurityChange(key, e.target.checked)}
+                        />
+                        <span className="slider round"></span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'appearance' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Appearance</h2>
+                <p>Adjust how the dashboard looks and feels.</p>
+
+                <div className="settings-list">
+                  <div className="setting-toggle">
+                    <div className="toggle-info">
+                      <span className="toggle-label">Dark Mode</span>
+                      <span className="toggle-desc">Switch between light and dark interface colors</span>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={appearanceSettings.theme === 'dark'}
+                        onChange={(e) => handleUserAppearanceChange('theme', e.target.checked ? 'dark' : 'light')}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  {[
+                    ['compactView', 'Compact View', 'Reduce spacing to show more content on screen'],
+                    ['showAvatars', 'Show Avatars', 'Display user and employee avatars'],
+                    ['animationsEnabled', 'Animations', 'Enable smooth transitions and motion']
+                  ].map(([key, label, desc]) => (
+                    <div className="setting-toggle" key={key}>
+                      <div className="toggle-info">
+                        <span className="toggle-label">{label}</span>
+                        <span className="toggle-desc">{desc}</span>
+                      </div>
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={appearanceSettings[key]}
+                          onChange={(e) => handleUserAppearanceChange(key, e.target.checked)}
+                        />
+                        <span className="slider round"></span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {activeTab === 'notifications' && (
+              <section className="user-role-request user-settings-panel">
+                <h2>Notifications</h2>
+                <p>Choose which admin updates should reach you.</p>
+
+                <div className="settings-list">
+                  {[
+                    ['emailNotifications', 'Email Notifications', 'Receive important updates by email'],
+                    ['pushNotifications', 'Push Notifications', 'Show browser notifications for live updates'],
+                    ['leaveApprovalAlerts', 'Approval Alerts', 'Notify me when requests need review'],
+                    ['weeklyReports', 'Weekly Reports', 'Receive a weekly summary of activity']
+                  ].map(([key, label, desc]) => (
+                    <div className="setting-toggle" key={key}>
+                      <div className="toggle-info">
+                        <span className="toggle-label">{label}</span>
+                        <span className="toggle-desc">{desc}</span>
+                      </div>
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={notificationSettings[key]}
+                          onChange={(e) => handleUserNotificationChange(key, e.target.checked)}
+                        />
+                        <span className="slider round"></span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
       <div className="settings-page">

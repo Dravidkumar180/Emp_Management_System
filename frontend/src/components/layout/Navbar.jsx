@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../common/ThemeToggle';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
-import { fetchPendingRoleRequests } from '../../services/auth';
+import { fetchMyRoleRequests, fetchPendingRoleRequests } from '../../services/auth';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
 
@@ -15,6 +15,7 @@ const Navbar = ({ onSidebarToggle }) => {
   const [pendingCount, setPendingCount] = useState(0);
   const pendingRequestIdsRef = useRef(new Set());
   const initialPendingLoad = useRef(true);
+  const lastNotificationUserRef = useRef('');
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -54,12 +55,24 @@ const Navbar = ({ onSidebarToggle }) => {
   };
 
   const isAdmin = user?.role === 'admin';
+  const userEmail = user?.email || '';
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric' 
   });
+
+  useEffect(() => {
+    const notificationUserKey = userEmail ? `${userEmail}:${user?.role || 'user'}` : '';
+    if (lastNotificationUserRef.current !== notificationUserKey) {
+      clearNotifications();
+      setPendingCount(0);
+      pendingRequestIdsRef.current = new Set();
+      initialPendingLoad.current = true;
+      lastNotificationUserRef.current = notificationUserKey;
+    }
+  }, [clearNotifications, user?.role, userEmail]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -111,6 +124,69 @@ const Navbar = ({ onSidebarToggle }) => {
       clearInterval(interval);
     };
   }, [isAdmin, addNotification]);
+
+  useEffect(() => {
+    if (!userEmail || isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `roleRequestNotifications:${userEmail}`;
+
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    const notifyReviewedRequests = async () => {
+      try {
+        const requests = await fetchMyRoleRequests();
+        if (!active) return;
+
+        const seen = getSeenNotifications();
+        let changed = false;
+
+        requests
+          .filter((request) => request.status === 'approved' || request.status === 'rejected')
+          .forEach((request) => {
+            const seenKey = `${request.id}:${request.status}`;
+            if (seen.has(seenKey)) return;
+
+            const approved = request.status === 'approved';
+            addNotification({
+              type: approved ? 'success' : 'info',
+              title: approved ? 'Role Request Approved' : 'Role Request Rejected',
+              message: approved
+                ? 'Your role request has been approved.'
+                : 'Your role request has been rejected.',
+            });
+            seen.add(seenKey);
+            changed = true;
+          });
+
+        if (changed) {
+          saveSeenNotifications(seen);
+        }
+      } catch (error) {
+        console.error('Failed to load role request status notifications', error);
+      }
+    };
+
+    notifyReviewedRequests();
+    const interval = setInterval(notifyReviewedRequests, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userEmail]);
 
   return (
     <nav className="navbar">
