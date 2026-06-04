@@ -3,10 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
 
-const Sidebar = ({ isOpen }) => {
+const Sidebar = () => {
+  const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
-  const { user: authUser, logout } = useAuth();
 
+  // Menu items with SVG icons
   const menuItems = [
     { 
       path: '/dashboard', 
@@ -17,7 +18,8 @@ const Sidebar = ({ isOpen }) => {
           <path d="M5 11V17L12 21L19 17V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M12 15V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
-      )
+      ),
+      roles: ['super_admin', 'admin', 'user']
     },
     { 
       path: '/employees', 
@@ -29,7 +31,8 @@ const Sidebar = ({ isOpen }) => {
           <path d="M23 21V19C22.8 16.8 21 15 19 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           <path d="M16 3.13C17.5 3.54 18.6 4.93 18.6 6.55C18.6 8.17 17.5 9.56 16 9.97" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-      )
+      ),
+      roles: ['super_admin', 'admin', 'user']
     },
     { 
       path: '/departments', 
@@ -39,7 +42,8 @@ const Sidebar = ({ isOpen }) => {
           <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
           <path d="M16 21V5C16 3.9 15.1 3 14 3H10C8.9 3 8 3.9 8 5V21" stroke="currentColor" strokeWidth="2"/>
         </svg>
-      )
+      ),
+      roles: ['super_admin', 'admin']
     },
     { 
       path: '/attendance', 
@@ -52,7 +56,22 @@ const Sidebar = ({ isOpen }) => {
           <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2"/>
           <path d="M15 14L12 17M9 14L12 17M12 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-      )
+      ),
+      roles: ['super_admin', 'admin', 'user']
+    },
+    { 
+      path: '/companies', 
+      name: 'Companies', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M16 21V5C16 3.9 15.1 3 14 3H10C8.9 3 8 3.9 8 5V21" stroke="currentColor" strokeWidth="2"/>
+          <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="2"/>
+          <line x1="7" y1="12" x2="5" y2="12" stroke="currentColor" strokeWidth="2"/>
+          <line x1="19" y1="12" x2="17" y2="12" stroke="currentColor" strokeWidth="2"/>
+        </svg>
+      ),
+      roles: ['super_admin']  // Only Super Admin can see Companies page
     },
     { 
       path: '/settings', 
@@ -65,66 +84,49 @@ const Sidebar = ({ isOpen }) => {
           <path d="M4.6 14.8L3.5 15.9C3.2 16.2 3.2 16.7 3.5 17L6.7 20.2C7 20.5 7.5 20.5 7.8 20.2L8.9 19.1" stroke="currentColor" strokeWidth="2"/>
           <path d="M19.4 8.9L20.5 7.8C20.8 7.5 20.8 7 20.5 6.7L17.3 3.5C17 3.2 16.5 3.2 16.2 3.5L15.1 4.6" stroke="currentColor" strokeWidth="2"/>
         </svg>
-      )
+      ),
+      roles: ['super_admin', 'admin']
     },
   ];
 
-  const visibleMenuItems = authUser?.role === 'admin'
-    ? menuItems
-    : menuItems.filter((item) => ['/dashboard', '/employees', '/settings'].includes(item.path));
-
-  // Safe function to get user initials
-  const getUserInitials = () => {
-    try {
-      if (user && user.name) {
-        return user.name.charAt(0).toUpperCase();
-      }
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        if (parsedUser && parsedUser.name) {
-          return parsedUser.name.charAt(0).toUpperCase();
-        }
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-    return 'A';
-  };
-
-  // Safe function to get user name
-  const getUserName = () => {
-    try {
-      if (user && user.name) {
-        return user.name;
-      }
-      if (user && user.email) {
-        return user.email.split('@')[0];
-      }
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        if (parsedUser && parsedUser.name) {
-          return parsedUser.name;
-        }
-        if (parsedUser && parsedUser.email) {
-          return parsedUser.email.split('@')[0];
-        }
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    }
-    return 'Admin User';
-  };
+  // Filter menu items based on user role
+  const filteredMenuItems = menuItems.filter(item => 
+    item.roles.includes(user?.role || 'user')
+  );
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // ✅ KEEP THIS CODE EXACTLY AS IS - DO NOT DELETE OR MODIFY
-return (
-    <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
+  const getUserName = () => {
+    if (user?.name) return user.name;
+    if (user?.email) return user.email.split('@')[0];
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        return parsed.name || parsed.email?.split('@')[0] || 'User';
+      } catch {
+        return 'User';
+      }
+    }
+    return 'User';
+  };
+
+  const getUserInitial = () => {
+    const name = getUserName();
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getUserRole = () => {
+    if (user?.role === 'super_admin') return 'Super Admin';
+    if (user?.role === 'admin') return 'Administrator';
+    return 'User';
+  };
+
+  return (
+    <aside className="sidebar">
       <div className="sidebar-header">
         <div className="logo-section">
           <div className="logo-icon">
@@ -139,10 +141,10 @@ return (
             <p>Enterprise System</p>
           </div>
         </div>
-      </div>  
+      </div>
       
       <nav className="sidebar-nav">
-        {visibleMenuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -167,12 +169,10 @@ return (
 
       <div className="sidebar-footer">
         <div className="user-info">
-          <div className="user-avatar">
-            {getUserInitials()}
-          </div>
+          <div className="user-avatar">{getUserInitial()}</div>
           <div className="user-details">
             <span className="user-name">{getUserName()}</span>
-            <span className="user-role">{(authUser?.role || 'user').charAt(0).toUpperCase() + (authUser?.role || 'user').slice(1)}</span>
+            <span className="user-role">{getUserRole()}</span>
           </div>
         </div>
       </div>

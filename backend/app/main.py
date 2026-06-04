@@ -27,7 +27,7 @@ def seed_default_users():
                     existing.role = user_data["role"]
                     db.commit()
                     db.refresh(existing)
-                    print(f"🔧 Updated role for existing user: {normalized_email} -> {user_data['role']}")
+                    print(f"[*] Updated role for existing user: {normalized_email} -> {user_data['role']}")
                 continue
 
             user_create = UserCreate(
@@ -37,7 +37,7 @@ def seed_default_users():
                 role=user_data["role"].strip().lower()
             )
             UserRepository.create(db, user_create)
-            print(f"✅ Seeded user: {normalized_email} ({user_data['role']})")
+            print(f"[+] Seeded user: {normalized_email} ({user_data['role']})")
     finally:
         db.close()
 
@@ -45,7 +45,7 @@ def seed_default_users():
 @app.on_event("startup")
 async def startup_event():
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created")
+    print("[+] Database tables created")
     seed_default_users()
 
 # CORS

@@ -64,4 +64,4 @@ class DepartmentRepository:
             existing = DepartmentRepository.get_by_name(db, dept_name)
             if not existing:
                 DepartmentRepository.create(db, dept_name)
-        print("✅ Default departments initialized")     
+        print("[+] Default departments initialized")

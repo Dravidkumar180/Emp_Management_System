@@ -2,9 +2,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database.models import User
 from app.schemas.user import UserCreate
-from app.utils.auth import get_password_hash
+from app.utils.password import get_password_hash
 from typing import Optional
-
+    
 class UserRepository:
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[User]:
@@ -57,7 +57,7 @@ class UserRepository:
             db.add(db_user)
             db.commit()
             db.refresh(db_user)
-            print(f"✅ User created in DB: {db_user.email}")
+            print(f"[+] User created in DB: {db_user.email}")
             return db_user
         except Exception as e:
             print(f"Error creating user: {e}")
