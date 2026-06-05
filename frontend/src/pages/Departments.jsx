@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAllEmployees } from '../services/api';
 import './Departments.css';
 import { useNotifications } from '../context/NotificationContext';
+import { logAuditAction } from '../services/audit';
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -47,7 +48,7 @@ const Departments = () => {
     }
   };
 
-  const saveDepartment = () => {
+  const saveDepartment = async () => {
     const trimmedName = newDepartment.trim();
     if (!trimmedName) {
       setAddError('Department name is required');
@@ -68,6 +69,13 @@ const Departments = () => {
     setAddError('');
     setShowAddModal(false);
     addNotification({ type: 'success', title: 'Department Added', message: `${trimmedName} was created` });
+    await logAuditAction({
+      action: 'Department Created',
+      entityType: 'department',
+      entityName: trimmedName,
+      details: `Department ${trimmedName} was created`,
+      newValue: { name: trimmedName }
+    });
   };
 
   // Filter departments based on search

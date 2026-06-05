@@ -25,6 +25,8 @@ class RoleRequestService:
                 raise ValueError('Admin reviewer does not exist in the database')
             if admin_user.role != 'admin':
                 raise ValueError('This reviewer exists but is not an admin. Please choose a valid admin reviewer.')
+            if requester.company_id != admin_user.company_id:
+                raise ValueError('Please choose an admin from your company.')
 
             role_request = RoleRequestRepository.create(
                 db,
@@ -84,6 +86,8 @@ class RoleRequestService:
             requester = UserRepository.get_by_id(db, role_request.requester_id)
             if not requester:
                 raise ValueError('Requester not found')
+            if requester.company_id != admin_user.company_id:
+                raise ValueError('This request belongs to another company')
 
             requester.role = 'user'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'approved', reviewer_id=admin_user.id)
@@ -113,6 +117,8 @@ class RoleRequestService:
             requester = UserRepository.get_by_id(db, role_request.requester_id)
             if not requester:
                 raise ValueError('Requester not found')
+            if requester.company_id != admin_user.company_id:
+                raise ValueError('This request belongs to another company')
 
             requester.role = 'user'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'rejected', reviewer_id=admin_user.id)

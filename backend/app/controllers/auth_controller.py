@@ -42,9 +42,9 @@ class AuthController:
             raise HTTPException(status_code=500, detail=str(e))
 
     @staticmethod
-    def get_admin_reviewers():
+    def get_admin_reviewers(company_id=None):
         try:
-            emails = AuthService.list_admin_reviewers()
+            emails = AuthService.list_admin_reviewers(company_id)
             return {"admins": emails}
         except Exception as e:
             print(f"Controller get_admin_reviewers error: {e}")

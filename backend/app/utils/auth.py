@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Optional
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.database.database import SessionLocal
 from app.database.models import User
@@ -16,6 +16,28 @@ security = HTTPBearer()
 
 # Import password utilities (no circular dependency)
 from app.utils.password import verify_password, get_password_hash
+
+
+COMPANY_SLUG_TO_ID = {
+    "company-a": 1,
+    "company-b": 2,
+}
+
+
+def normalize_company_id(company_id) -> Optional[int]:
+    if company_id is None or company_id == "":
+        return None
+    if isinstance(company_id, int):
+        return company_id
+
+    normalized = str(company_id).strip().lower()
+    if normalized in COMPANY_SLUG_TO_ID:
+        return COMPANY_SLUG_TO_ID[normalized]
+
+    try:
+        return int(normalized)
+    except ValueError:
+        return None
 
 
 # ========== JWT TOKEN FUNCTIONS ==========
@@ -81,9 +103,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        # Add company info to user object from token payload. Keep role from DB so
-        # stale tokens cannot upgrade or downgrade the current account.
-        user.company_id = payload.get("company_id")
+        # Keep role from DB so stale tokens cannot upgrade or downgrade the current account.
+        user.company_id = payload.get("company_id") or user.company_id
         
         return user
     finally:
@@ -154,7 +175,10 @@ async def get_company_user(current_user: User = Depends(get_current_user)) -> Us
 
 # ========== COMPANY ISOLATION HELPER ==========
 
-def get_current_company_id(current_user: User = Depends(get_current_user)) -> int:
+def get_current_company_id(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+) -> int:
     """
     Get current user's company ID
     Args:
@@ -164,9 +188,24 @@ def get_current_company_id(current_user: User = Depends(get_current_user)) -> in
     Raises:
         HTTPException 403 if user has no company
     """
-    if not current_user.company_id and current_user.role != "super_admin":
+    company_id = normalize_company_id(current_user.company_id)
+
+    if company_id is None:
+        header_company_id = normalize_company_id(request.headers.get("x-company-id"))
+        if header_company_id is not None:
+            company_id = header_company_id
+
+            from app.repositories.user_repository import UserRepository
+
+            db = SessionLocal()
+            try:
+                UserRepository.update_company(db, current_user.id, company_id)
+            finally:
+                db.close()
+
+    if company_id is None and current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="No company associated with user")
-    return current_user.company_id
+    return company_id
 
 
 # ========== TOKEN REFRESH FUNCTION ==========

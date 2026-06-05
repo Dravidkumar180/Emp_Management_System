@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List
 from sqlalchemy.orm import Session
 from app.controllers.company_controller import CompanyController
@@ -7,6 +7,7 @@ from app.utils.auth import get_current_user, get_super_admin, create_access_toke
 from app.database.database import SessionLocal
 from app.database.models import User
 from app.repositories.company_repository import CompanyRepository
+from app.utils.audit_helper import log_action
 
 router = APIRouter()
 
@@ -84,6 +85,7 @@ async def get_company_stats_by_id(
 @router.post("/companies", response_model=CompanyResponse)
 async def create_company(
     company: CompanyCreate,
+    request: Request,
     current_user: User = Depends(get_super_admin)
 ):
     """
@@ -91,13 +93,28 @@ async def create_company(
     - **Super Admin only**
     - Creates a new company in the system
     """
-    return CompanyController.create_company(company.dict())
+    created_company = CompanyController.create_company(company.dict())
+    log_action(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        user_email=current_user.email,
+        action="Company Created",
+        entity_type="company",
+        entity_id=created_company.get("id"),
+        entity_name=created_company.get("name"),
+        details=f"Company {created_company.get('name')} was created",
+        request=request,
+        company_id=current_user.company_id,
+        new_value=str(created_company)
+    )
+    return created_company
 
 
 @router.put("/companies/{company_id}", response_model=CompanyResponse)
 async def update_company(
     company_id: int,
     company: CompanyUpdate,
+    request: Request,
     current_user: User = Depends(get_super_admin)
 ):
     """
@@ -105,12 +122,46 @@ async def update_company(
     - **Super Admin only**
     - Updates company information
     """
-    return CompanyController.update_company(company_id, company.dict())
+    old_company = None
+    db = SessionLocal()
+    try:
+        existing = CompanyRepository.get_by_id(db, company_id)
+        if existing:
+            old_company = {
+                "id": existing.id,
+                "name": existing.name,
+                "email": existing.email,
+                "phone": existing.phone,
+                "address": existing.address,
+                "website": existing.website,
+                "subscription_plan": existing.subscription_plan,
+                "is_active": existing.is_active
+            }
+    finally:
+        db.close()
+
+    updated_company = CompanyController.update_company(company_id, company.dict())
+    log_action(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        user_email=current_user.email,
+        action="Company Updated",
+        entity_type="company",
+        entity_id=company_id,
+        entity_name=updated_company.get("name"),
+        details=f"Company {updated_company.get('name')} was updated",
+        request=request,
+        company_id=current_user.company_id,
+        old_value=str(old_company) if old_company else None,
+        new_value=str(updated_company)
+    )
+    return updated_company
 
 
 @router.delete("/companies/{company_id}")
 async def delete_company(
     company_id: int,
+    request: Request,
     current_user: User = Depends(get_super_admin)
 ):
     """
@@ -118,12 +169,35 @@ async def delete_company(
     - **Super Admin only**
     - Permanently removes company and all associated data
     """
-    return CompanyController.delete_company(company_id)
+    deleted_name = f"Company {company_id}"
+    db = SessionLocal()
+    try:
+        existing = CompanyRepository.get_by_id(db, company_id)
+        if existing:
+            deleted_name = existing.name
+    finally:
+        db.close()
+
+    result = CompanyController.delete_company(company_id)
+    log_action(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        user_email=current_user.email,
+        action="Company Deleted",
+        entity_type="company",
+        entity_id=company_id,
+        entity_name=deleted_name,
+        details=f"Company {deleted_name} was deleted",
+        request=request,
+        company_id=current_user.company_id
+    )
+    return result
 
 
 @router.post("/companies/{company_id}/activate")
 async def activate_company(
     company_id: int,
+    request: Request,
     current_user: User = Depends(get_super_admin)
 ):
     """
@@ -136,6 +210,18 @@ async def activate_company(
         company = CompanyRepository.activate(db, company_id)
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
+        log_action(
+            user_id=current_user.id,
+            user_name=current_user.name,
+            user_email=current_user.email,
+            action="Company Activated",
+            entity_type="company",
+            entity_id=company.id,
+            entity_name=company.name,
+            details=f"Company {company.name} was activated",
+            request=request,
+            company_id=current_user.company_id
+        )
         
         return {"message": f"Company {company.name} activated successfully"}
     finally:
@@ -145,6 +231,7 @@ async def activate_company(
 @router.post("/companies/{company_id}/deactivate")
 async def deactivate_company(
     company_id: int,
+    request: Request,
     current_user: User = Depends(get_super_admin)
 ):
     """
@@ -157,6 +244,18 @@ async def deactivate_company(
         company = CompanyRepository.deactivate(db, company_id)
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
+        log_action(
+            user_id=current_user.id,
+            user_name=current_user.name,
+            user_email=current_user.email,
+            action="Company Deactivated",
+            entity_type="company",
+            entity_id=company.id,
+            entity_name=company.name,
+            details=f"Company {company.name} was deactivated",
+            request=request,
+            company_id=current_user.company_id
+        )
         
         return {"message": f"Company {company.name} deactivated successfully"}
     finally:

@@ -4,6 +4,26 @@ from app.utils.auth import verify_password, create_access_token
 from app.database.database import SessionLocal
 import traceback
 
+COMPANY_SLUG_TO_ID = {
+    "company-a": 1,
+    "company-b": 2,
+}
+
+def normalize_company_id(company_id):
+    if company_id is None or company_id == "":
+        return None
+    if isinstance(company_id, int):
+        return company_id
+
+    normalized = str(company_id).strip().lower()
+    if normalized in COMPANY_SLUG_TO_ID:
+        return COMPANY_SLUG_TO_ID[normalized]
+
+    try:
+        return int(normalized)
+    except ValueError:
+        return None
+
 class AuthService:
     @staticmethod
     def register(user_data: dict):
@@ -15,6 +35,7 @@ class AuthService:
             user_data['email'] = user_data['email'].strip().lower()
             user_data['name'] = user_data['name'].strip()
             user_data['role'] = user_data.get('role', 'user').strip().lower()
+            user_data['company_id'] = normalize_company_id(user_data.get('company_id')) or 1
 
             # Check if user exists
             existing = UserRepository.get_by_email(db, user_data['email'])
@@ -31,7 +52,8 @@ class AuthService:
                 "id": new_user.id,
                 "name": new_user.name,
                 "email": new_user.email,
-                "role": new_user.role
+                "role": new_user.role,
+                "company_id": new_user.company_id
             }
         except Exception as e:
             print(f"[-] Registration error: {e}")
@@ -54,9 +76,17 @@ class AuthService:
             if not verify_password(login_data["password"], user.password):
                 print(f"[-] Invalid password for: {login_data['email']}")
                 return None
+
+            requested_company_id = normalize_company_id(login_data.get("company_id"))
+            if requested_company_id and user.company_id != requested_company_id:
+                user = UserRepository.update_company(db, user.id, requested_company_id) or user
+
+            final_company_id = user.company_id or requested_company_id or 1
+            if user.company_id != final_company_id:
+                user = UserRepository.update_company(db, user.id, final_company_id) or user
             
             access_token = create_access_token(
-                data={"sub": user.email, "role": user.role}
+                data={"sub": user.email, "role": user.role, "company_id": final_company_id}
             )
             
             print(f"[+] Login successful: {user.email}")
@@ -67,7 +97,8 @@ class AuthService:
                     "id": user.id,
                     "name": user.name,
                     "email": user.email,
-                    "role": user.role
+                    "role": user.role,
+                    "company_id": final_company_id
                 }
             }
         except Exception as e:
@@ -103,10 +134,11 @@ class AuthService:
             db.close()
 
     @staticmethod
-    def list_admin_reviewers():
+    def list_admin_reviewers(company_id=None):
         db = SessionLocal()
         try:
-            admins = UserRepository.get_admins(db)
+            normalized_company_id = normalize_company_id(company_id)
+            admins = UserRepository.get_admins(db, normalized_company_id)
             return [admin.email for admin in admins]
         finally:
             db.close()

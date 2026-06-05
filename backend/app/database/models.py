@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
 from datetime import datetime
 from app.database.database import Base
 
+
 class Company(Base):
+    """Company Model for Multi-Tenancy"""
     __tablename__ = "companies"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -19,6 +21,7 @@ class Company(Base):
 
 
 class Employee(Base):
+    """Employee Model"""
     __tablename__ = "employees"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -39,8 +42,8 @@ class Employee(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-# ✅ ADD THIS - Department Model
 class Department(Base):
+    """Department Model"""
     __tablename__ = "departments"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -52,6 +55,7 @@ class Department(Base):
 
 
 class User(Base):
+    """User Model for Authentication"""
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -59,22 +63,75 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(String(20), default="user")
+    role = Column(String(20), default="user")  # super_admin, admin, user
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class RoleChangeRequest(Base):
+    """Role Change Request Model"""
     __tablename__ = "role_change_requests"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     requester_email = Column(String(100), nullable=False)
     admin_email = Column(String(100), nullable=False)
-    status = Column(String(20), default="pending")
+    reason = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")  # pending, approved, rejected
     requested_at = Column(DateTime, default=datetime.utcnow)
     reviewed_at = Column(DateTime, nullable=True)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_name = Column(String(100), nullable=False)
+    user_email = Column(String(100), nullable=False)
+    action = Column(String(100), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    entity_id = Column(Integer, nullable=True)
+    entity_name = Column(String(200), nullable=True)
+    details = Column(Text, nullable=True)
+    ip_address = Column(String(50), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+
+
+class Notification(Base):
+    """Notification Model for Real-time Alerts"""
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(50), default="info")  # info, success, warning, error
+    is_read = Column(Boolean, default=False)
+    related_entity_type = Column(String(50), nullable=True)
+    related_entity_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime, nullable=True)
+
+
+# Helper function to get all table names (for debugging)
+def get_all_tables():
+    return [
+        "companies",
+        "employees", 
+        "departments",
+        "users",
+        "role_change_requests",
+        "audit_logs",
+        "notifications"
+    ]

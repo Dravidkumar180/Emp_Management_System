@@ -9,7 +9,7 @@ import './Navbar.css';
 
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
-  const { notifications, removeNotification, clearNotifications, addNotification } = useNotifications();
+  const { notifications, removeNotification, clearNotifications, addNotification, refreshNotificationScope } = useNotifications();
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
@@ -56,6 +56,7 @@ const Navbar = ({ onSidebarToggle }) => {
 
   const isAdmin = user?.role === 'admin';
   const userEmail = user?.email || '';
+  const userCompanyId = user?.companyId || user?.company_id || 'company-a';
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -64,15 +65,15 @@ const Navbar = ({ onSidebarToggle }) => {
   });
 
   useEffect(() => {
-    const notificationUserKey = userEmail ? `${userEmail}:${user?.role || 'user'}` : '';
+    const notificationUserKey = userEmail ? `${userEmail}:${user?.role || 'user'}:${userCompanyId}` : '';
     if (lastNotificationUserRef.current !== notificationUserKey) {
-      clearNotifications();
+      refreshNotificationScope();
       setPendingCount(0);
       pendingRequestIdsRef.current = new Set();
       initialPendingLoad.current = true;
       lastNotificationUserRef.current = notificationUserKey;
     }
-  }, [clearNotifications, user?.role, userEmail]);
+  }, [refreshNotificationScope, user?.role, userCompanyId, userEmail]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -131,7 +132,7 @@ const Navbar = ({ onSidebarToggle }) => {
     }
 
     let active = true;
-    const seenStorageKey = `roleRequestNotifications:${userEmail}`;
+    const seenStorageKey = `roleRequestNotifications:${userEmail}:${userCompanyId}`;
 
     const getSeenNotifications = () => {
       try {
@@ -186,7 +187,7 @@ const Navbar = ({ onSidebarToggle }) => {
       active = false;
       clearInterval(interval);
     };
-  }, [addNotification, isAdmin, userEmail]);
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
   return (
     <nav className="navbar">

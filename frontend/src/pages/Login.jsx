@@ -100,20 +100,20 @@ const Login = () => {
 
           {!isLogin && (
             <div className="form-group">
-              <label>Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+              <label>Company</label>
+              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={loading}>
+                <option value="company-a">Company A</option>
+                <option value="company-b">Company B</option>
               </select>
             </div>
           )}
 
           {!isLogin && (
             <div className="form-group">
-              <label>Company</label>
-              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={loading}>
-                <option value="company-a">Company A</option>
-                <option value="company-b">Company B</option>
+              <label>Role</label>
+              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
           )}

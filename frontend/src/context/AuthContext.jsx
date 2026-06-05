@@ -7,9 +7,20 @@ const COMPANY_STORAGE_KEY = 'userCompanies';
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+const normalizeCompanyId = (companyId) => {
+  if (companyId === 1 || companyId === '1') return 'company-a';
+  if (companyId === 2 || companyId === '2') return 'company-b';
+  return companyId || 'company-a';
+};
+
 const getStoredUserCompany = (email) => {
   const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
   return userCompanies[normalizeEmail(email)] || 'company-a';
+};
+
+const getSavedUserCompany = (email) => {
+  const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
+  return userCompanies[normalizeEmail(email)];
 };
 
 const saveUserCompany = (email, companyId) => {
@@ -20,9 +31,15 @@ const saveUserCompany = (email, companyId) => {
 
 const withCompany = (userData, fallbackEmail) => {
   const email = userData?.email || fallbackEmail;
+  const companyId = normalizeCompanyId(userData?.companyId || userData?.company_id || getStoredUserCompany(email));
+
+  if (email && companyId) {
+    saveUserCompany(email, companyId);
+  }
+
   return {
     ...userData,
-    companyId: getStoredUserCompany(email),
+    companyId,
   };
 };
 
@@ -49,9 +66,9 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, companyId) => {
     try {
-      const response = await loginUser(email, password);
+      const response = await loginUser(email, password, companyId || getSavedUserCompany(email));
       if (response && response.access_token) {
         const userWithCompany = withCompany(response.user, email);
         localStorage.setItem('token', response.access_token);
@@ -67,7 +84,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password, role = 'user', companyId = 'company-a') => {
     try {
-      const response = await registerUser(name, email, password, role);
+      const response = await registerUser(name, email, password, role, companyId);
       if (response && response.user) {
         saveUserCompany(email, companyId);
         // Auto login after registration

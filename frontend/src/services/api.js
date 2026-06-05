@@ -1,5 +1,6 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { logAuditAction } from './audit';
 
 const JSONPLACEHOLDER_URL = 'https://jsonplaceholder.typicode.com';
 
@@ -91,6 +92,14 @@ export const createEmployee = async (employeeData) => {
     
     savedEmployees.push(newEmployee);
     localStorage.setItem('employees', JSON.stringify(savedEmployees));
+    await logAuditAction({
+      action: 'Employee Created',
+      entityType: 'employee',
+      entityId: newEmployee.id,
+      entityName: newEmployee.name,
+      details: `Employee ${newEmployee.name} was created`,
+      newValue: newEmployee
+    });
     
     toast.success('Employee added successfully!');
     return newEmployee;
@@ -106,10 +115,20 @@ export const updateEmployee = async (id, employeeData) => {
   try {
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
     const index = savedEmployees.findIndex(emp => emp.id === id);
+    const oldEmployee = index !== -1 ? savedEmployees[index] : null;
 
     if (index !== -1) {
       savedEmployees[index] = { ...savedEmployees[index], ...employeeData };
       localStorage.setItem('employees', JSON.stringify(savedEmployees));
+      await logAuditAction({
+        action: 'Employee Updated',
+        entityType: 'employee',
+        entityId: id,
+        entityName: savedEmployees[index].name,
+        details: `Employee ${savedEmployees[index].name} was updated`,
+        oldValue: oldEmployee,
+        newValue: savedEmployees[index]
+      });
       toast.success('Employee updated successfully!');
       return savedEmployees[index];
     }
@@ -121,6 +140,14 @@ export const updateEmployee = async (id, employeeData) => {
     };
     savedEmployees.push(updatedEmployee);
     localStorage.setItem('employees', JSON.stringify(savedEmployees));
+    await logAuditAction({
+      action: 'Employee Updated',
+      entityType: 'employee',
+      entityId: id,
+      entityName: updatedEmployee.name,
+      details: `Employee ${updatedEmployee.name || id} was updated`,
+      newValue: updatedEmployee
+    });
 
     toast.success('Employee updated successfully!');
     return updatedEmployee;
@@ -135,8 +162,17 @@ export const updateEmployee = async (id, employeeData) => {
 export const deleteEmployee = async (id) => {
   try {
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    const deletedEmployee = savedEmployees.find(emp => emp.id === id);
     const filtered = savedEmployees.filter(emp => emp.id !== id);
     localStorage.setItem('employees', JSON.stringify(filtered));
+    await logAuditAction({
+      action: 'Employee Deleted',
+      entityType: 'employee',
+      entityId: id,
+      entityName: deletedEmployee?.name || `Employee ${id}`,
+      details: `${deletedEmployee?.name || `Employee ${id}`} was deleted`,
+      oldValue: deletedEmployee
+    });
     
     toast.success('Employee deleted successfully!');
     return { success: true };

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import employee_routes, auth_routes
+from app.routes import employee_routes, auth_routes , company_routes, audit_log_routes
 from app.routes.role_request_routes import router as role_request_routes
 from app.database.database import engine, SessionLocal
 from app.database.models import Base
@@ -61,6 +61,8 @@ app.add_middleware(
 app.include_router(employee_routes.router, prefix="/api/v1", tags=["Employees"])
 app.include_router(auth_routes.router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(role_request_routes, prefix="/api/v1", tags=["Role Requests"])
+app.include_router(company_routes.router, prefix="/api/v1", tags=["Companies"])
+app.include_router(audit_log_routes.router, prefix="/api/v1", tags=["Audit Logs"])
 
 @app.get("/")
 async def root():

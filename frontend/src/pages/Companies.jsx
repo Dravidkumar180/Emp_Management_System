@@ -1,16 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { getAllEmployees } from '../services/api';
+import { logAuditAction } from '../services/audit';
 import './Companies.css';
 
 const COMPANIES = [
-  { id: 'company-a', name: 'Company A', access: 'Current company' },
-  { id: 'company-b', name: 'Company B', access: 'Isolated tenant' },
+  { id: 'company-a', name: 'Company A' },
+  { id: 'company-b', name: 'Company B' },
 ];
 
 const Companies = () => {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [customCompanies, setCustomCompanies] = useState([]);
-  const [activeCompanyId, setActiveCompanyId] = useState('company-a');
+  const currentCompanyId = user?.companyId || 'company-a';
+  const [activeCompanyId, setActiveCompanyId] = useState(currentCompanyId);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,16 +25,14 @@ const Companies = () => {
   });
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    setActiveCompanyId(currentCompanyId);
+  }, [currentCompanyId]);
+
+  useEffect(() => {
+    const loadEmployees = async () => {
       try {
         setLoading(true);
-        const response = await fetch('https://jsonplaceholder.typicode.com/users');
-
-        if (!response.ok) {
-          throw new Error('Unable to load employees');
-        }
-
-        const data = await response.json();
+        const data = await getAllEmployees();
         setEmployees(data);
       } catch (error) {
         toast.error('Failed to fetch company employees');
@@ -38,26 +41,25 @@ const Companies = () => {
       }
     };
 
-    fetchEmployees();
+    loadEmployees();
   }, []);
 
   const companies = useMemo(() => {
-    const midpoint = Math.ceil(employees.length / 2);
-    const splitEmployees = {
-      'company-a': employees.slice(0, midpoint),
-      'company-b': employees.slice(midpoint),
-    };
-
     const defaultCompanies = COMPANIES.map((company) => ({
       ...company,
-      employees: splitEmployees[company.id],
-      users: splitEmployees[company.id].length,
+      access: company.id === currentCompanyId ? 'Current company' : 'Isolated tenant',
+      employees: employees.filter((employee) => (employee.companyId || 'company-a') === company.id),
     }));
 
-    return [...defaultCompanies, ...customCompanies];
-  }, [customCompanies, employees]);
+    return [...defaultCompanies, ...customCompanies].map((company) => ({
+      ...company,
+      access: company.id === currentCompanyId ? 'Current company' : 'Isolated tenant',
+      users: company.employees?.length || 0,
+    }));
+  }, [currentCompanyId, customCompanies, employees]);
 
   const activeCompany = companies.find((company) => company.id === activeCompanyId) || companies[0];
+  const currentCompany = companies.find((company) => company.id === currentCompanyId) || activeCompany;
   const isAddCompanyValid = formData.name.trim() && formData.slug.trim() && formData.access;
 
   const resetForm = () => {
@@ -73,7 +75,7 @@ const Companies = () => {
     resetForm();
   };
 
-  const handleAddCompany = (event) => {
+  const handleAddCompany = async (event) => {
     event.preventDefault();
 
     if (!isAddCompanyValid) return;
@@ -89,13 +91,20 @@ const Companies = () => {
     const newCompany = {
       id: slug,
       name: formData.name.trim(),
-      access: formData.access,
+      access: slug === currentCompanyId ? 'Current company' : 'Isolated tenant',
       employees: [],
       users: 0,
     };
 
     setCustomCompanies((prev) => [...prev, newCompany]);
     setActiveCompanyId(newCompany.id);
+    await logAuditAction({
+      action: 'Company Created',
+      entityType: 'company',
+      entityName: newCompany.name,
+      details: `Company ${newCompany.name} was created`,
+      newValue: newCompany
+    });
     toast.success('Company added');
     closeAddModal();
   };
@@ -137,7 +146,7 @@ const Companies = () => {
 
       <div className="companies-intro">
         <p>
-          Companies are configured in EEMS. Your workspace: <strong>{activeCompany.name}</strong>
+          Companies are configured in EEMS. Your workspace: <strong>{currentCompany.name}</strong>
         </p>
       </div>
 
@@ -187,7 +196,7 @@ const Companies = () => {
               <div>
                 <h3>{employee.name}</h3>
                 <p>{employee.email}</p>
-                <span>{employee.company?.name}</span>
+                <span>{employee.sourceCompany || employee.company || company.name}</span>
               </div>
             </article>
           ))}

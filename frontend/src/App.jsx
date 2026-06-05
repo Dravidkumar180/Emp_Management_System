@@ -11,6 +11,7 @@ import Employees from './pages/Employees';
 import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
 import Companies from './pages/Companies';
+import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from 'react-hot-toast';
@@ -71,10 +72,16 @@ function App() {
             } />
 
             <Route path="/companies" element={
-              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'admin', 'user']}>
                 <DashboardLayout>
                   <Companies />
                 </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/audit-logs" element={
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+                <AuditLogs />
               </ProtectedRoute>
             } />
             

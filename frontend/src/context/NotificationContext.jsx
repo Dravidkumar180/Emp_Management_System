@@ -2,23 +2,44 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 
 const NotificationContext = createContext(null);
 
-export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const raw = localStorage.getItem('notifications');
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
+const getNotificationStorageKey = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user?.email) {
+      return `notifications:${user.email}:${user.role || 'user'}:${user.companyId || user.company_id || 'company-a'}`;
     }
-  });
+  } catch {
+    // Fall back to the anonymous key.
+  }
+  return 'notifications';
+};
+
+const loadNotifications = (storageKey) => {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const NotificationProvider = ({ children }) => {
+  const [storageKey, setStorageKey] = useState(getNotificationStorageKey);
+  const [notifications, setNotifications] = useState(() => loadNotifications(getNotificationStorageKey()));
+
+  const refreshNotificationScope = useCallback(() => {
+    const nextKey = getNotificationStorageKey();
+    setStorageKey(nextKey);
+    setNotifications(loadNotifications(nextKey));
+  }, []);
 
   useEffect(() => {
     try {
-      localStorage.setItem('notifications', JSON.stringify(notifications));
+      localStorage.setItem(storageKey, JSON.stringify(notifications));
     } catch (e) {
       // ignore
     }
-  }, [notifications]);
+  }, [notifications, storageKey]);
 
   const addNotification = useCallback(({ type = 'info', title = '', message = '' }) => {
     const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -34,7 +55,7 @@ export const NotificationProvider = ({ children }) => {
   const clearNotifications = useCallback(() => setNotifications([]), []);
 
   return (
-    <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearNotifications }}>
+    <NotificationContext.Provider value={{ notifications, addNotification, removeNotification, clearNotifications, refreshNotificationScope }}>
       {children}
     </NotificationContext.Provider>
   );

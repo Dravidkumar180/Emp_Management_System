@@ -31,9 +31,9 @@ const AppRoutes = () => {
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/employees" element={<Employees />} />
-        <Route path="/departments" element={<Departments />} />
-        <Route path="/attendance" element={<Attendance />} />
-        <Route path="/companies" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Companies /></PrivateRoute>} />
+        <Route path="/departments" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Departments /></PrivateRoute>} />
+        <Route path="/attendance" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Attendance /></PrivateRoute>} />
+        <Route path="/companies" element={<PrivateRoute allowedRoles={['super_admin', 'admin', 'user']}><Companies /></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute allowedRoles={['user']}><Settings /></PrivateRoute>} />
         <Route path="/role-requests" element={<PrivateRoute allowedRoles={['admin']}><RoleRequests /></PrivateRoute>} />
       </Route>

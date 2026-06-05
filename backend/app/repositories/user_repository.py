@@ -35,9 +35,12 @@ class UserRepository:
             return None
 
     @staticmethod
-    def get_admins(db: Session):
+    def get_admins(db: Session, company_id: int = None):
         try:
-            return db.query(User).filter(User.role == 'admin').all()
+            query = db.query(User).filter(User.role == 'admin')
+            if company_id is not None:
+                query = query.filter(User.company_id == company_id)
+            return query.all()
         except Exception as e:
             print(f"Error getting admin users: {e}")
             return []
@@ -52,7 +55,8 @@ class UserRepository:
                 name=normalized_name,
                 email=normalized_email,
                 password=hashed_password,
-                role=user.role
+                role=user.role,
+                company_id=user.company_id
             )
             db.add(db_user)
             db.commit()
@@ -91,5 +95,20 @@ class UserRepository:
             return user
         except Exception as e:
             print(f"Error updating role: {e}")
+            db.rollback()
+            return None
+
+    @staticmethod
+    def update_company(db: Session, user_id: int, company_id: int) -> Optional[User]:
+        try:
+            user = UserRepository.get_by_id(db, user_id)
+            if not user:
+                return None
+            user.company_id = company_id
+            db.commit()
+            db.refresh(user)
+            return user
+        except Exception as e:
+            print(f"Error updating company: {e}")
             db.rollback()
             return None

@@ -7,11 +7,11 @@ class EmployeeService:
     """Service layer for employee business logic"""
     
     @staticmethod
-    def get_all_employees() -> List[Dict]:
+    def get_all_employees(company_id: int) -> List[Dict]:
         """Get all employees from database"""
         db = SessionLocal()
         try:
-            employees = EmployeeRepository.get_all(db)
+            employees = EmployeeRepository.get_all(db, company_id)
             result = []
             for emp in employees:
                 result.append({
@@ -21,7 +21,7 @@ class EmployeeService:
                     "username": emp.username,
                     "phone": emp.phone,
                     "website": emp.website,
-                    "company": emp.company,
+                    "company": emp.company_name,
                     "department": emp.department,
                     "status": emp.status,
                     "role": emp.role,
@@ -39,11 +39,11 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def get_employee_by_id(employee_id: int) -> Optional[Dict]:
+    def get_employee_by_id(employee_id: int, company_id: int) -> Optional[Dict]:
         """Get employee by ID from database"""
         db = SessionLocal()
         try:
-            emp = EmployeeRepository.get_by_id(db, employee_id)
+            emp = EmployeeRepository.get_by_id(db, employee_id, company_id)
             if not emp:
                 return None
             return {
@@ -53,7 +53,7 @@ class EmployeeService:
                 "username": emp.username,
                 "phone": emp.phone,
                 "website": emp.website,
-                "company": emp.company,
+                "company": emp.company_name,
                 "department": emp.department,
                 "status": emp.status,
                 "role": emp.role,
@@ -70,7 +70,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def create_employee(employee_data: Dict) -> Dict:
+    def create_employee(employee_data: Dict, company_id: int) -> Dict:
         """Create new employee in database"""
         db = SessionLocal()
         try:
@@ -82,7 +82,7 @@ class EmployeeService:
             
             # Create employee using repository
             employee_create = EmployeeCreate(**employee_data)
-            new_employee = EmployeeRepository.create(db, employee_create)
+            new_employee = EmployeeRepository.create(db, employee_create, company_id)
             
             # Commit is handled in repository
             return {
@@ -92,7 +92,7 @@ class EmployeeService:
                 "username": new_employee.username,
                 "phone": new_employee.phone,
                 "website": new_employee.website,
-                "company": new_employee.company,
+                "company": new_employee.company_name,
                 "department": new_employee.department,
                 "status": new_employee.status,
                 "role": new_employee.role,
@@ -109,18 +109,18 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def update_employee(employee_id: int, update_data: Dict) -> Optional[Dict]:
+    def update_employee(employee_id: int, update_data: Dict, company_id: int) -> Optional[Dict]:
         """Update employee in database"""
         db = SessionLocal()
         try:
             # Check if employee exists
-            existing = EmployeeRepository.get_by_id(db, employee_id)
+            existing = EmployeeRepository.get_by_id(db, employee_id, company_id)
             if not existing:
                 return None
             
             # Update employee
             employee_update = EmployeeUpdate(**update_data)
-            updated = EmployeeRepository.update(db, employee_id, employee_update)
+            updated = EmployeeRepository.update(db, employee_id, company_id, employee_update)
             
             if not updated:
                 return None
@@ -132,7 +132,7 @@ class EmployeeService:
                 "username": updated.username,
                 "phone": updated.phone,
                 "website": updated.website,
-                "company": updated.company,
+                "company": updated.company_name,
                 "department": updated.department,
                 "status": updated.status,
                 "role": updated.role,
@@ -149,17 +149,17 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def delete_employee(employee_id: int) -> bool:
+    def delete_employee(employee_id: int, company_id: int) -> bool:
         """Delete employee from database"""
         db = SessionLocal()
         try:
             # Check if employee exists
-            existing = EmployeeRepository.get_by_id(db, employee_id)
+            existing = EmployeeRepository.get_by_id(db, employee_id, company_id)
             if not existing:
                 return False
             
             # Delete employee
-            success = EmployeeRepository.delete(db, employee_id)
+            success = EmployeeRepository.delete(db, employee_id, company_id)
             return success
         except Exception as e:
             print(f"Error deleting employee: {e}")
@@ -169,11 +169,11 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def get_department_stats() -> Dict:
+    def get_department_stats(company_id: int) -> Dict:
         """Get department statistics from database"""
         db = SessionLocal()
         try:
-            return EmployeeRepository.get_stats_by_department(db)
+            return EmployeeRepository.get_stats_by_department(db, company_id)
         except Exception as e:
             print(f"Error getting department stats: {e}")
             return {}
@@ -181,11 +181,11 @@ class EmployeeService:
             db.close()
     
     @staticmethod
-    def get_status_stats() -> Dict:
+    def get_status_stats(company_id: int) -> Dict:
         """Get status statistics from database"""
         db = SessionLocal()
         try:
-            return EmployeeRepository.get_stats_by_status(db)
+            return EmployeeRepository.get_stats_by_status(db, company_id)
         except Exception as e:
             print(f"Error getting status stats: {e}")
             return {}

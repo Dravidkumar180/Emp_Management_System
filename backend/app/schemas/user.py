@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
     role: str = "user"
+    company_id: Optional[int] = None
 
     @field_validator('role')
     @classmethod

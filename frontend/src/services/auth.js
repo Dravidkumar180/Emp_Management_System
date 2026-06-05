@@ -10,13 +10,14 @@ const api = axios.create({
 });
 
 // Register new user
-export const registerUser = async (name, email, password, role = 'user') => {
+export const registerUser = async (name, email, password, role = 'user', companyId = 'company-a') => {
   try {
     const response = await api.post('/auth/register', {
       name,
       email,
       password,
-      role
+      role,
+      company_id: companyId
     });
     toast.success('Registration successful! Please login.');
     return response.data;
@@ -28,11 +29,12 @@ export const registerUser = async (name, email, password, role = 'user') => {
 };
 
 // Login user
-export const loginUser = async (email, password) => {
+export const loginUser = async (email, password, companyId = 'company-a') => {
   try {
     const response = await api.post('/auth/login', {
       email,
-      password
+      password,
+      company_id: companyId
     });
     toast.success(`Welcome back, ${response.data.user.name}!`);
     return response.data;

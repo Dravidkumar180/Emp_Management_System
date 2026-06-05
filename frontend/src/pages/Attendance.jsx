@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAllEmployees } from '../services/api';
 import './Attendance.css';
 import { useNotifications } from '../context/NotificationContext';
+import { logAuditAction } from '../services/audit';
 
 const Attendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -92,9 +93,18 @@ const Attendance = () => {
 
   const { addNotification } = useNotifications();
 
-  const handleDateChange = (e) => {
-    setSelectedDate(e.target.value);
-    addNotification({ type: 'info', title: 'Attendance Date', message: `Viewing attendance for ${e.target.value}` });
+  const handleDateChange = async (e) => {
+    const nextDate = e.target.value;
+    setSelectedDate(nextDate);
+    addNotification({ type: 'info', title: 'Attendance Date', message: `Viewing attendance for ${nextDate}` });
+    await logAuditAction({
+      action: 'Attendance Viewed',
+      entityType: 'attendance',
+      entityName: nextDate,
+      details: `Attendance date changed to ${nextDate}`,
+      oldValue: { date: selectedDate },
+      newValue: { date: nextDate }
+    });
   };
 
   const downloadReport = () => {
@@ -131,6 +141,13 @@ const Attendance = () => {
       URL.revokeObjectURL(url);
 
       addNotification({ type: 'success', title: 'Report Downloaded', message: `Report saved as ${fileName}` });
+      logAuditAction({
+        action: 'Attendance Report Downloaded',
+        entityType: 'attendance',
+        entityName: selectedDate,
+        details: `Attendance report downloaded for ${selectedDate}`,
+        newValue: { date: selectedDate, records: rows.length, fileName }
+      });
     } catch (e) {
       console.error('Download failed', e);
       addNotification({ type: 'warning', title: 'Download Failed', message: 'Could not generate report' });

@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
+from typing import Optional, Union
 from app.controllers.auth_controller import AuthController
 from app.repositories.user_repository import UserRepository
 from app.database.database import SessionLocal
-from app.utils.auth import decode_access_token
+from app.utils.auth import decode_access_token, get_current_user
+from app.database.models import User
 
 router = APIRouter()
 security = HTTPBearer()
@@ -14,10 +16,12 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     role: str = "user"
+    company_id: Optional[Union[int, str]] = None
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+    company_id: Optional[Union[int, str]] = None
 
 class PasswordResetRequest(BaseModel):
     email: str
@@ -82,20 +86,16 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "company_id": user.company_id
         }
     finally:
         db.close()
 
 @router.get("/auth/admins")
-async def get_admin_reviewers(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+async def get_admin_reviewers(current_user: User = Depends(get_current_user)):
     try:
-        return AuthController.get_admin_reviewers()
+        return AuthController.get_admin_reviewers(current_user.company_id)
     except HTTPException:
         raise
     except Exception as exc:
