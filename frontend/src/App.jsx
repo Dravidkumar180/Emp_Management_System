@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
 import Departments from './pages/Departments';
+import DepartmentTransfer from './pages/DepartmentTransfer';
 import Attendance from './pages/Attendance';
 import Companies from './pages/Companies';
 import AuditLogs from './pages/AuditLogs';
@@ -65,6 +66,14 @@ function App() {
               <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
                   <Departments />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/department-transfer" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <DepartmentTransfer />
                 </DashboardLayout>
               </ProtectedRoute>
             } />

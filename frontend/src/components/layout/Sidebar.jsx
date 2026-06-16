@@ -45,6 +45,17 @@ const Sidebar = () => {
       ),
       roles: ['super_admin', 'admin']
     },
+    {
+      path: '/department-transfer',
+      name: 'Transfer',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M7 7H20M20 7L16 3M20 7L16 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M17 17H4M4 17L8 13M4 17L8 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      roles: ['admin']
+    },
     { 
       path: '/attendance', 
       name: 'Attendance', 
