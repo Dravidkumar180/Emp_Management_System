@@ -65,6 +65,28 @@ class User(Base):
     password = Column(String(255), nullable=False)
     role = Column(String(20), default="user")  # super_admin, admin, user
     is_active = Column(Boolean, default=True)
+    deactivated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deactivated_by_name = Column(String(100), nullable=True)
+    deactivated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserInvitation(Base):
+    """Company-scoped user invitation"""
+    __tablename__ = "user_invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)# Which company they join
+    email = Column(String(100), index=True, nullable=False)  # Email being invited
+    role = Column(String(20), default="user") # Role to assign (user/admin)
+    token = Column(String(255), unique=True, index=True, nullable=False)  # Unique invitation token
+    status = Column(String(20), default="pending")  # pending, accepted, revoked
+    invited_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    accepted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    accepted_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -84,6 +106,27 @@ class RoleChangeRequest(Base):
     reviewed_at = Column(DateTime, nullable=True)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ReactivationRequest(Base):
+    """Reactivation Request Model"""
+    __tablename__ = "reactivation_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    requester_email = Column(String(100), nullable=False)
+    requester_name = Column(String(100), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    deactivated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deactivated_by_name = Column(String(100), nullable=True)
+    message = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")  # pending, approved, rejected
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewer_name = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -131,7 +174,9 @@ def get_all_tables():
         "employees", 
         "departments",
         "users",
+        "user_invitations",
         "role_change_requests",
+        "reactivation_requests",
         "audit_logs",
         "notifications"
     ]

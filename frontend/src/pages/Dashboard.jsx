@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { getAllEmployees } from '../services/api';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart,
+  PieChart, Pie, Cell, LineChart, Line,
   ResponsiveContainer
 } from 'recharts';
 import './Dashboard.css';
@@ -22,12 +22,18 @@ const Dashboard = () => {
     inactive: 0
   });
   const [departmentData, setDepartmentData] = useState([]);
+  const [roleData, setRoleData] = useState([]);
   const [statusData, setStatusData] = useState([]);
-  const [monthlyJoins, setMonthlyJoins] = useState([]);
   const [recentEmployees, setRecentEmployees] = useState([]);
   const [activityData, setActivityData] = useState([]);
 
-  const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  const BAR_COLORS = ['#2f6de1', '#7c3aed', '#0f91a8', '#db2777', '#ea580c', '#2563eb', '#7c3aed', '#0f91a8'];
+  const STATUS_COLORS = {
+    Active: '#10b981',
+    Inactive: '#ef4444',
+    'On Leave': '#f59e0b',
+    Remote: '#06b6d4'
+  };
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -62,25 +68,19 @@ const Dashboard = () => {
       });
       const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value }));
       setDepartmentData(deptData);
+
+      // Role distribution
+      const roleMap = {};
+      data.forEach(emp => {
+        roleMap[emp.role] = (roleMap[emp.role] || 0) + 1;
+      });
+      const roleDataArray = Object.entries(roleMap).map(([name, value]) => ({ name, value }));
+      setRoleData(roleDataArray);
       
       // Status distribution
-      const statusMap = { Active: active, Remote: remote, 'On Leave': onLeave, Inactive: inactive };
+      const statusMap = { Active: active, Inactive: inactive, 'On Leave': onLeave, Remote: remote };
       const statusDataArray = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
       setStatusData(statusDataArray);
-      
-      // Monthly joins (last 6 months)
-      const monthMap = {};
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      data.forEach(emp => {
-        if (emp.joinDate) {
-          const month = parseInt(emp.joinDate.split('-')[1]) - 1;
-          const year = emp.joinDate.split('-')[0];
-          const key = `${months[month]} ${year}`;
-          monthMap[key] = (monthMap[key] || 0) + 1;
-        }
-      });
-      const monthlyData = Object.entries(monthMap).slice(-6).map(([month, count]) => ({ month, count }));
-      setMonthlyJoins(monthlyData);
       
       // Activity data (last 7 days simulation based on actual data)
       const activityDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -123,9 +123,10 @@ const Dashboard = () => {
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
+      const title = label || payload[0].name;
       return (
         <div className="custom-tooltip">
-          <p className="tooltip-label">{label}</p>
+          <p className="tooltip-label">{title}</p>
           <p className="tooltip-value">Count: {payload[0].value}</p>
         </div>
       );
@@ -276,19 +277,57 @@ const Dashboard = () => {
       {/* Charts Section */}
       <div className="charts-grid">
         {/* Department Distribution - Bar Chart */}
-        <div className="chart-card">
+        <div className="chart-card employee-status-card">
           <div className="chart-header">
-            <h3>Department Distribution</h3>
-            <p>Employee count by department</p>
+            <h3>Employee Distribution by Department</h3>
+            <p>Hover a bar to view department details</p>
           </div>
-          <div className="chart-container">
+          <div className="chart-container department-chart-container">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={departmentData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)' }} angle={-45} textAnchor="end" height={80} />
-                <YAxis tick={{ fill: 'var(--text-secondary)' }} />
+              <BarChart
+                data={departmentData}
+                layout="vertical"
+                margin={{ top: 18, right: 28, left: 12, bottom: 12 }}
+                barCategoryGap={12}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                <XAxis type="number" tick={{ fill: 'var(--text-secondary)' }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={96}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" fill="#4f46e5" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="value" fill="#2f6de1" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Role Count - Bar Chart */}
+        <div className="chart-card weekly-activity-card">
+          <div className="chart-header">
+            <h3>Employee Count by Role</h3>
+          </div>
+          <div className="chart-container role-chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={roleData} margin={{ top: 18, right: 28, left: 10, bottom: 46 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis
+                  dataKey="name"
+                  interval="preserveStartEnd"
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
+                  angle={0}
+                  height={58}
+                />
+                <YAxis allowDecimals={false} tick={{ fill: 'var(--text-secondary)' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {roleData.map((entry, index) => (
+                    <Cell key={`role-cell-${entry.name}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -297,55 +336,28 @@ const Dashboard = () => {
         {/* Status Distribution - Pie Chart */}
         <div className="chart-card">
           <div className="chart-header">
-            <h3>Employee Status</h3>
-            <p>Distribution by employment status</p>
+            <h3>Employee Status Overview</h3>
           </div>
-          <div className="chart-container pie-chart-container">
+          <div className="chart-container pie-chart-container status-overview-chart">
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
                   data={statusData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
+                  innerRadius={66}
+                  outerRadius={106}
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {statusData.map((entry) => (
+                    <Cell key={`status-cell-${entry.name}`} fill={STATUS_COLORS[entry.name]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<CustomTooltip />} />
                 <Legend />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Monthly Joins - Area Chart */}
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>Employee Growth</h3>
-            <p>New hires over time</p>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={monthlyJoins} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <defs>
-                  <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="month" tick={{ fill: 'var(--text-secondary)' }} />
-                <YAxis tick={{ fill: 'var(--text-secondary)' }} />
-                <Tooltip />
-                <Area type="monotone" dataKey="count" stroke="#4f46e5" fillOpacity={1} fill="url(#colorCount)" />
-              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>

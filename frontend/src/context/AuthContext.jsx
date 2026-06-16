@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, registerUser, getCurrentUser } from '../services/auth';
 
 const AuthContext = createContext();
@@ -82,9 +82,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role = 'user', companyId = 'company-a') => {
+  const register = async (name, email, password, role = 'user', companyId = 'company-a', inviteToken = null) => {
     try {
-      const response = await registerUser(name, email, password, role, companyId);
+      const response = await registerUser(name, email, password, role, companyId, inviteToken);
       if (response && response.user) {
         saveUserCompany(email, companyId);
         // Auto login after registration
@@ -102,12 +102,23 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    const userData = await getCurrentUser(token);
+    if (!userData) return null;
+    const userWithCompany = withCompany(userData, userData.email);
+    localStorage.setItem('user', JSON.stringify(userWithCompany));
+    setUser(userWithCompany);
+    return userWithCompany;
+  }, []);
+
   const hasRole = (role) => {
     return user?.role === role;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

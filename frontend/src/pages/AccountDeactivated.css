@@ -1,0 +1,185 @@
+.account-deactivated-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #eaf4ff;
+  padding: 26px 14px;
+}
+
+.account-deactivated-card {
+  width: min(100%, 560px);
+  background: #ffffff;
+  border: 1px solid #dbe7f3;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  padding: 28px 32px;
+}
+
+.account-deactivated-card h1 {
+  margin: 0 0 18px;
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.account-deactivated-card p {
+  margin: 0 0 16px;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.deactivated-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  color: #64748b;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.deactivated-meta span + span::before {
+  content: "·";
+  margin-right: 10px;
+}
+
+.request-status-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.request-status-box > div {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.status-label {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.reactivation-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.reactivation-form label {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.reactivation-form textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 13px;
+  padding: 12px;
+}
+
+.reactivation-form textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.reactivation-form button {
+  min-height: 38px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reactivation-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.reactivation-message {
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.reactivation-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.reactivation-history h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+}
+
+.reactivation-history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px 0;
+}
+
+.request-state {
+  text-transform: capitalize;
+}
+
+.request-state.approved {
+  color: #047857;
+}
+
+.request-state.rejected {
+  color: #dc2626;
+}
+
+.request-state.pending {
+  color: #b45309;
+}
+
+.deactivated-logout {
+  display: block;
+  margin: 22px auto 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 620px) {
+  .account-deactivated-card {
+    padding: 24px 20px;
+  }
+
+  .request-status-box {
+    grid-template-columns: 1fr;
+  }
+
+  .deactivated-meta span + span::before {
+    content: "";
+    margin-right: 0;
+  }
+}

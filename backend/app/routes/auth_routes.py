@@ -5,7 +5,7 @@ from typing import Optional, Union
 from app.controllers.auth_controller import AuthController
 from app.repositories.user_repository import UserRepository
 from app.database.database import SessionLocal
-from app.utils.auth import decode_access_token, get_current_user
+from app.utils.auth import decode_access_token, get_current_active_user
 from app.database.models import User
 
 router = APIRouter()
@@ -17,6 +17,7 @@ class RegisterRequest(BaseModel):
     password: str
     role: str = "user"
     company_id: Optional[Union[int, str]] = None
+    invite_token: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: str
@@ -34,6 +35,8 @@ async def register(user: RegisterRequest):
     try:
         result = AuthController.register(user.dict())
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Register route error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -87,13 +90,17 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "company_id": user.company_id
+            "company_id": user.company_id,
+            "is_active": user.is_active,
+            "deactivated_by_user_id": user.deactivated_by_user_id,
+            "deactivated_by_name": user.deactivated_by_name,
+            "deactivated_at": user.deactivated_at
         }
     finally:
         db.close()
 
 @router.get("/auth/admins")
-async def get_admin_reviewers(current_user: User = Depends(get_current_user)):
+async def get_admin_reviewers(current_user: User = Depends(get_current_active_user)):
     try:
         return AuthController.get_admin_reviewers(current_user.company_id)
     except HTTPException:

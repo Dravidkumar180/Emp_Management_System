@@ -7,6 +7,7 @@ class RoleRequestRepository:
     @staticmethod
     def create(db: Session, requester_id: int, requester_email: str, admin_email: str) -> RoleChangeRequest:
         role_request = RoleChangeRequest(
+            user_id=requester_id,
             requester_id=requester_id,
             requester_email=requester_email.strip().lower(),
             admin_email=admin_email.strip().lower(),

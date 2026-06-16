@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/common/ThemeToggle';
+import { fetchPublicInvitation } from '../services/userInvitations';
 import './Login.css';
 
 const Login = () => {
@@ -12,16 +13,52 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
   const [companyId, setCompanyId] = useState('company-a');
+  const [inviteToken, setInviteToken] = useState('');
+  const [inviteLocked, setInviteLocked] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const navigateByRole = (userData) => {
-    navigate(userData?.role === 'admin' ? '/settings' : '/dashboard');
+    if (userData?.is_active === false) {
+      navigate('/account-deactivated');
+      return;
+    }
+    navigate(userData?.role === 'admin' ? '/users' : '/dashboard');
   };
+
+  useEffect(() => {
+    const token = searchParams.get('invite');
+    if (!token) return;
+
+    const loadInvite = async () => {
+      try {
+        setInviteLoading(true);
+        const invitation = await fetchPublicInvitation(token);
+        if (invitation.status !== 'pending' || invitation.is_expired) {
+          setError('This invitation is no longer available');
+          return;
+        }
+        setInviteToken(token);
+        setInviteLocked(true);
+        setIsLogin(false);
+        setEmail(invitation.email);
+        setRole(invitation.role);
+        setCompanyId(String(invitation.company_id));
+      } catch (error) {
+        setError(error.response?.data?.detail || 'Invalid invitation link');
+      } finally {
+        setInviteLoading(false);
+      }
+    };
+
+    loadInvite();
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,7 +97,7 @@ const Login = () => {
         return;
       }
       
-      const result = await register(name, email, password, role, companyId);
+      const result = await register(name, email, password, role, companyId, inviteToken || null);
       if (result.success) {
         navigateByRole(result.user);
       } else {
@@ -101,9 +138,11 @@ const Login = () => {
           {!isLogin && (
             <div className="form-group">
               <label>Company</label>
-              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={loading}>
+              <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} disabled={loading || inviteLocked}>
                 <option value="company-a">Company A</option>
                 <option value="company-b">Company B</option>
+                <option value="1">Company A</option>
+                <option value="2">Company B</option>
               </select>
             </div>
           )}
@@ -111,7 +150,7 @@ const Login = () => {
           {!isLogin && (
             <div className="form-group">
               <label>Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading}>
+              <select value={role} onChange={(e) => setRole(e.target.value)} disabled={loading || inviteLocked}>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
@@ -125,7 +164,7 @@ const Login = () => {
               placeholder="Enter your email or name"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
+              disabled={loading || inviteLocked}
             />
           </div>
           
@@ -171,8 +210,8 @@ const Login = () => {
           
           {error && <div className="error-message">{error}</div>}
           
-          <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Please wait...' : (isLogin ? 'Log in' : 'Sign up')}
+          <button type="submit" className="login-btn" disabled={loading || inviteLoading}>
+            {loading || inviteLoading ? 'Please wait...' : (isLogin ? 'Log in' : 'Sign up')}
           </button>
         </form>
         
@@ -191,6 +230,8 @@ const Login = () => {
                 setConfirmPassword('');
                 setRole('user');
                 setCompanyId('company-a');
+                setInviteToken('');
+                setInviteLocked(false);
               }}
             >
               {isLogin ? 'Sign up' : 'Log in'}

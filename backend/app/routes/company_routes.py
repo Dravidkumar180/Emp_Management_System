@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from app.controllers.company_controller import CompanyController
 from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse
-from app.utils.auth import get_current_user, get_super_admin, create_access_token
+from app.utils.auth import get_current_user, get_current_active_user, get_super_admin, create_access_token
 from app.database.database import SessionLocal
 from app.database.models import User
 from app.repositories.company_repository import CompanyRepository
@@ -265,7 +265,7 @@ async def deactivate_company(
 # ========== AUTHENTICATED USER ENDPOINTS ==========
 
 @router.get("/companies/my-company")
-async def get_my_company(current_user: User = Depends(get_current_user)):
+async def get_my_company(current_user: User = Depends(get_current_active_user)):
     """
     Get current user's company
     - Any authenticated user
@@ -291,7 +291,7 @@ async def get_my_company(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/companies/stats")
-async def get_company_stats(current_user: User = Depends(get_current_user)):
+async def get_company_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get statistics for current user's company
     - Any authenticated user
@@ -311,46 +311,32 @@ async def get_company_stats(current_user: User = Depends(get_current_user)):
 @router.post("/companies/switch/{company_id}")
 async def switch_company(
     company_id: int,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Switch current user's active company
     - Any authenticated user can switch to any active company
     - Returns new access token with updated company_id
     """
+    if current_user.role != "super_admin" and current_user.company_id != company_id:
+        raise HTTPException(status_code=403, detail="Users can only access their assigned company")
+
     db = SessionLocal()
     try:
-        # Check if company exists
         company = CompanyRepository.get_by_id(db, company_id)
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
-        
-        # Check if company is active
         if not company.is_active:
             raise HTTPException(status_code=400, detail="Company is not active")
-        
-        # Get user from database
-        user = db.query(User).filter(User.id == current_user.id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Update user's company_id
-        user.company_id = company_id
-        db.commit()
-        db.refresh(user)
-        
-        # Create new access token with updated company info
+
         new_token = create_access_token({
-            "sub": user.email,
-            "role": user.role,
-            "company_id": company_id
+            "sub": current_user.email,
+            "role": current_user.role,
+            "company_id": current_user.company_id
         })
-        
-        # Get updated stats for the new company
-        stats = CompanyRepository.get_company_stats(db, company_id)
-        
+
         return {
-            "message": f"Successfully switched to {company.name}",
+            "message": f"Using assigned company {company.name}",
             "access_token": new_token,
             "token_type": "bearer",
             "company": {
@@ -358,20 +344,15 @@ async def switch_company(
                 "name": company.name,
                 "slug": company.slug,
                 "subscription_plan": company.subscription_plan,
-                "stats": stats
+                "stats": CompanyRepository.get_company_stats(db, company_id)
             }
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error switching company: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         db.close()
 
 
 @router.get("/companies/available")
-async def get_available_companies(current_user: User = Depends(get_current_user)):
+async def get_available_companies(current_user: User = Depends(get_current_active_user)):
     """
     Get all companies user can switch to
     - Any authenticated user
@@ -379,18 +360,18 @@ async def get_available_companies(current_user: User = Depends(get_current_user)
     """
     db = SessionLocal()
     try:
-        # Return all active companies
-        companies = CompanyRepository.get_all_active(db)
-        
-        # Get current user's company ID
-        current_company = CompanyRepository.get_user_company(db, current_user.id)
+        if current_user.role == "super_admin":
+            companies = CompanyRepository.get_all_active(db)
+        else:
+            current_company = CompanyRepository.get_user_company(db, current_user.id)
+            companies = [current_company] if current_company else []
         
         return [{
             "id": c.id,
             "name": c.name,
             "slug": c.slug,
             "subscription_plan": c.subscription_plan,
-            "is_current": current_company and current_company.id == c.id
+            "is_current": current_user.company_id == c.id
         } for c in companies]
     finally:
         db.close()

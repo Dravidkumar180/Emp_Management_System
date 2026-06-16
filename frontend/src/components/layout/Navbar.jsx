@@ -3,9 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../common/ThemeToggle';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
-import { fetchMyRoleRequests, fetchPendingRoleRequests } from '../../services/auth';
+import { fetchMyRoleRequests, fetchPendingRoleRequests, fetchPendingReactivationRequests } from '../../services/auth';
+import { logAuditAction } from '../../services/audit';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
+
+const ACCESS_REQUESTS_KEY = 'attendanceAccessRequests';
+
+const readStorage = (key, fallback = []) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStorage = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString();
+};
 
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
@@ -13,6 +35,7 @@ const Navbar = ({ onSidebarToggle }) => {
   const { user } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingAttendanceRequests, setPendingAttendanceRequests] = useState([]);
   const pendingRequestIdsRef = useRef(new Set());
   const initialPendingLoad = useRef(true);
   const lastNotificationUserRef = useRef('');
@@ -54,7 +77,7 @@ const Navbar = ({ onSidebarToggle }) => {
     return name.charAt(0).toUpperCase();
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const userEmail = user?.email || '';
   const userCompanyId = user?.companyId || user?.company_id || 'company-a';
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -69,6 +92,7 @@ const Navbar = ({ onSidebarToggle }) => {
     if (lastNotificationUserRef.current !== notificationUserKey) {
       refreshNotificationScope();
       setPendingCount(0);
+      setPendingAttendanceRequests([]);
       pendingRequestIdsRef.current = new Set();
       initialPendingLoad.current = true;
       lastNotificationUserRef.current = notificationUserKey;
@@ -85,28 +109,37 @@ const Navbar = ({ onSidebarToggle }) => {
 
     const loadPendingNotifications = async () => {
       try {
-        const requests = await fetchPendingRoleRequests();
+        const roleRequests = await fetchPendingRoleRequests();
+        const reactivationRequests = await fetchPendingReactivationRequests();
         if (!active) return;
 
+        const requests = [
+          ...roleRequests.map((request) => ({ ...request, notificationType: 'role' })),
+          ...reactivationRequests.map((request) => ({ ...request, notificationType: 'reactivation' })),
+        ];
+
         setPendingCount(requests.length);
-        const currentIds = new Set(requests.map((request) => request.id));
+        const currentIds = new Set(requests.map((request) => `${request.notificationType}:${request.id}`));
 
         if (initialPendingLoad.current) {
           initialPendingLoad.current = false;
           if (requests.length > 0) {
             addNotification({
               type: 'info',
-              title: 'Pending Role Requests',
-              message: `You have ${requests.length} pending admin request${requests.length > 1 ? 's' : ''}.`,
+              title: 'Pending Requests',
+              message: `You have ${requests.length} pending request${requests.length > 1 ? 's' : ''}.`,
             });
           }
         } else {
-          const newRequests = requests.filter((request) => !pendingRequestIdsRef.current.has(request.id));
+          const newRequests = requests.filter((request) => !pendingRequestIdsRef.current.has(`${request.notificationType}:${request.id}`));
           if (newRequests.length > 0) {
+            const reactivationCount = newRequests.filter((request) => request.notificationType === 'reactivation').length;
             addNotification({
               type: 'info',
-              title: 'New Role Request',
-              message: `${newRequests.length} new role request${newRequests.length > 1 ? 's' : ''} need review.`,
+              title: reactivationCount > 0 ? 'New Reactivation Request' : 'New Role Request',
+              message: reactivationCount > 0
+                ? `${reactivationCount} reactivation request${reactivationCount > 1 ? 's' : ''} need review.`
+                : `${newRequests.length} new role request${newRequests.length > 1 ? 's' : ''} need review.`,
             });
           }
         }
@@ -125,6 +158,132 @@ const Navbar = ({ onSidebarToggle }) => {
       clearInterval(interval);
     };
   }, [isAdmin, addNotification]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setPendingAttendanceRequests([]);
+      return;
+    }
+
+    let active = true;
+
+    const notifyAttendanceAccessRequests = () => {
+      try {
+        const requests = readStorage(ACCESS_REQUESTS_KEY);
+        if (!active) return;
+
+        setPendingAttendanceRequests(
+          requests.filter((request) => request.companyId === userCompanyId && request.status === 'pending')
+        );
+      } catch (error) {
+        console.error('Failed to load attendance access notifications', error);
+      }
+    };
+
+    notifyAttendanceAccessRequests();
+    const interval = setInterval(notifyAttendanceAccessRequests, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isAdmin, userCompanyId]);
+
+  const handleAttendanceAccessReview = async (requestId, nextStatus) => {
+    const requests = readStorage(ACCESS_REQUESTS_KEY);
+    const oldRequest = requests.find((request) => request.id === requestId);
+    if (!oldRequest) return;
+
+    const reviewedRequest = {
+      ...oldRequest,
+      status: nextStatus,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: user?.name || user?.email || 'Admin',
+    };
+    const nextRequests = requests.map((request) => (
+      request.id === requestId ? reviewedRequest : request
+    ));
+    writeStorage(ACCESS_REQUESTS_KEY, nextRequests);
+    setPendingAttendanceRequests(
+      nextRequests.filter((request) => request.companyId === userCompanyId && request.status === 'pending')
+    );
+
+    const approved = nextStatus === 'approved';
+    addNotification({
+      type: approved ? 'success' : 'info',
+      title: approved ? 'Attendance Access Approved' : 'Attendance Access Rejected',
+      message: `${reviewedRequest.name || reviewedRequest.email} was ${nextStatus}.`,
+    });
+    await logAuditAction({
+      action: approved ? 'Attendance Access Approved' : 'Attendance Access Rejected',
+      entityType: 'attendance',
+      entityId: reviewedRequest.id,
+      entityName: reviewedRequest.name || reviewedRequest.email,
+      details: `Attendance access ${nextStatus} for ${reviewedRequest.email}`,
+      oldValue: oldRequest,
+      newValue: reviewedRequest,
+    });
+  };
+
+  useEffect(() => {
+    if (!isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `leaveRequestAdminNotifications:${userCompanyId}:${userEmail || 'admin'}`;
+
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    const notifyLeaveRequests = () => {
+      try {
+        const requests = JSON.parse(localStorage.getItem('userLeaveRequests') || '[]');
+        if (!active) return;
+
+        const seen = getSeenNotifications();
+        let changed = false;
+
+        requests
+          .filter((request) => request.companyId === userCompanyId && request.status === 'pending')
+          .forEach((request) => {
+            const seenKey = `${request.id}:pending`;
+            if (seen.has(seenKey)) return;
+
+            addNotification({
+              type: 'info',
+              title: 'Leave Request Pending',
+              message: `${request.name || request.email} requested ${request.type} leave.`,
+            });
+            seen.add(seenKey);
+            changed = true;
+          });
+
+        if (changed) {
+          saveSeenNotifications(seen);
+        }
+      } catch (error) {
+        console.error('Failed to load leave request notifications', error);
+      }
+    };
+
+    notifyLeaveRequests();
+    const interval = setInterval(notifyLeaveRequests, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
   useEffect(() => {
     if (!userEmail || isAdmin) {
@@ -189,6 +348,126 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
+  useEffect(() => {
+    if (!userEmail || isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `leaveRequestUserNotifications:${userEmail}:${userCompanyId}`;
+
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    const notifyLeaveStatus = () => {
+      try {
+        const requests = JSON.parse(localStorage.getItem('userLeaveRequests') || '[]');
+        if (!active) return;
+
+        const seen = getSeenNotifications();
+        let changed = false;
+
+        requests
+          .filter((request) => request.email === userEmail && request.companyId === userCompanyId)
+          .filter((request) => request.status === 'approved' || request.status === 'rejected')
+          .forEach((request) => {
+            const seenKey = `${request.id}:${request.status}:${request.reviewedAt || ''}`;
+            if (seen.has(seenKey)) return;
+
+            const approved = request.status === 'approved';
+            addNotification({
+              type: approved ? 'success' : 'info',
+              title: approved ? 'Leave Approved' : 'Leave Rejected',
+              message: `Your ${request.type} leave request was ${request.status}.`,
+            });
+            seen.add(seenKey);
+            changed = true;
+          });
+
+        if (changed) {
+          saveSeenNotifications(seen);
+        }
+      } catch (error) {
+        console.error('Failed to load leave status notification', error);
+      }
+    };
+
+    notifyLeaveStatus();
+    const interval = setInterval(notifyLeaveStatus, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
+
+  useEffect(() => {
+    if (!userEmail || isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `attendanceAccessUserNotifications:${userEmail}:${userCompanyId}`;
+
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    const notifyAttendanceAccessStatus = () => {
+      try {
+        const requests = JSON.parse(localStorage.getItem('attendanceAccessRequests') || '[]');
+        if (!active) return;
+
+        const request = requests.find((item) => item.email === userEmail && item.companyId === userCompanyId);
+        if (!request || (request.status !== 'approved' && request.status !== 'rejected')) return;
+
+        const seen = getSeenNotifications();
+        const seenKey = `${request.id}:${request.status}:${request.reviewedAt || ''}`;
+        if (seen.has(seenKey)) return;
+
+        const approved = request.status === 'approved';
+        addNotification({
+          type: approved ? 'success' : 'info',
+          title: approved ? 'Attendance Access Approved' : 'Attendance Access Rejected',
+          message: approved
+            ? 'You can now check in and check out from Attendance.'
+            : 'Your attendance access request was rejected.',
+        });
+        seen.add(seenKey);
+        saveSeenNotifications(seen);
+      } catch (error) {
+        console.error('Failed to load attendance access status notification', error);
+      }
+    };
+
+    notifyAttendanceAccessStatus();
+    const interval = setInterval(notifyAttendanceAccessStatus, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
+
+  const totalNotificationCount = notifications.length + pendingAttendanceRequests.length;
+
   return (
     <nav className="navbar">
       <div className="navbar-left">
@@ -251,8 +530,8 @@ const Navbar = ({ onSidebarToggle }) => {
                     <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  {(notifications.length || pendingCount) > 0 && (
-                    <span className="notification-badge">{Math.max(notifications.length, pendingCount)}</span>
+                  {(totalNotificationCount || pendingCount) > 0 && (
+                    <span className="notification-badge">{Math.max(totalNotificationCount, pendingCount)}</span>
                   )}
                 </button>
                 <div className={`notifications-dropdown ${dropdownOpen ? 'open' : ''}`}>
@@ -261,12 +540,29 @@ const Navbar = ({ onSidebarToggle }) => {
                     <button className="clear-notifs" onClick={() => clearNotifications()}>Clear All</button>
                   </div>
                   <div className="notifications-list">
-                    {notifications.length === 0 && pendingCount === 0 && (
+                    {notifications.length === 0 && pendingAttendanceRequests.length === 0 && pendingCount === 0 && (
                       <div className="no-notifs">No notifications</div>
                     )}
-                    {notifications.length === 0 && pendingCount > 0 && (
+                    {notifications.length === 0 && pendingAttendanceRequests.length === 0 && pendingCount > 0 && (
                       <div className="no-notifs">You have {pendingCount} pending role request{pendingCount > 1 ? 's' : ''}.</div>
                     )}
+                    {pendingAttendanceRequests.map((request) => (
+                      <div key={`attendance-${request.id}`} className="notification-item notification-item-actionable">
+                        <div className="notification-content">
+                          <div className="notification-title">Attendance Access Pending</div>
+                          <div className="notification-message">{request.name || request.email} requested attendance access.</div>
+                          <div className="notification-time">{formatDateTime(request.submittedAt)}</div>
+                          <div className="notification-actions">
+                            <button className="notification-approve" onClick={() => handleAttendanceAccessReview(request.id, 'approved')}>
+                              Approve
+                            </button>
+                            <button className="notification-reject" onClick={() => handleAttendanceAccessReview(request.id, 'rejected')}>
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                     {notifications.map(n => (
                       <div key={n.id} className="notification-item">
                         <div className="notification-content">
@@ -274,7 +570,7 @@ const Navbar = ({ onSidebarToggle }) => {
                           <div className="notification-message">{n.message}</div>
                           <div className="notification-time">{new Date(n.time).toLocaleString()}</div>
                         </div>
-                        <button className="notification-close" onClick={() => removeNotification(n.id)}>✕</button>
+                        <button className="notification-close" onClick={() => removeNotification(n.id)}>x</button>
                       </div>
                     ))}
                   </div>

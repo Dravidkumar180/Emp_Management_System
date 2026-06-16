@@ -4,6 +4,7 @@ from app.database.models import User
 from app.schemas.user import UserCreate
 from app.utils.password import get_password_hash
 from typing import Optional
+from datetime import datetime
     
 class UserRepository:
     @staticmethod
@@ -43,6 +44,14 @@ class UserRepository:
             return query.all()
         except Exception as e:
             print(f"Error getting admin users: {e}")
+            return []
+
+    @staticmethod
+    def get_by_company(db: Session, company_id: int):
+        try:
+            return db.query(User).filter(User.company_id == company_id).order_by(User.created_at.desc()).all()
+        except Exception as e:
+            print(f"Error getting company users: {e}")
             return []
     
     @staticmethod
@@ -110,5 +119,42 @@ class UserRepository:
             return user
         except Exception as e:
             print(f"Error updating company: {e}")
+            db.rollback()
+            return None
+
+    @staticmethod
+    def deactivate_in_company(db: Session, user_id: int, company_id: int, deactivated_by: User = None) -> Optional[User]:
+        try:
+            user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
+            if not user:
+                return None
+            user.is_active = False
+            if deactivated_by:
+                user.deactivated_by_user_id = deactivated_by.id
+                user.deactivated_by_name = deactivated_by.name
+            user.deactivated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(user)
+            return user
+        except Exception as e:
+            print(f"Error deactivating user: {e}")
+            db.rollback()
+            return None
+
+    @staticmethod
+    def activate_in_company(db: Session, user_id: int, company_id: int) -> Optional[User]:
+        try:
+            user = db.query(User).filter(User.id == user_id, User.company_id == company_id).first()
+            if not user:
+                return None
+            user.is_active = True
+            user.deactivated_by_user_id = None
+            user.deactivated_by_name = None
+            user.deactivated_at = None
+            db.commit()
+            db.refresh(user)
+            return user
+        except Exception as e:
+            print(f"Error activating user: {e}")
             db.rollback()
             return None

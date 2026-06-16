@@ -143,14 +143,14 @@
 /* Charts Grid */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
   margin-bottom: 30px;
 }
 
 .chart-card {
   background: var(--bg-card);
-  border-radius: 20px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   overflow: hidden;
   transition: all 0.3s;
@@ -160,13 +160,22 @@
   box-shadow: var(--shadow-lg);
 }
 
+.employee-status-card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.weekly-activity-card {
+  grid-column: 2;
+  grid-row: 2;
+}
+
 .chart-header {
   padding: 20px 24px 0 24px;
-  border-bottom: 1px solid var(--border);
 }
 
 .chart-header h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 6px;
@@ -179,14 +188,23 @@
 }
 
 .chart-container {
-  padding: 20px;
-  height: 340px;
+  padding: 14px 18px 20px;
+  height: 320px;
+}
+
+.department-chart-container,
+.role-chart-container {
+  padding-top: 8px;
 }
 
 .pie-chart-container {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.status-overview-chart {
+  padding-top: 4px;
 }
 
 /* Custom Tooltip */
@@ -363,7 +381,13 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .charts-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .employee-status-card,
+  .weekly-activity-card {
+    grid-column: auto;
+    grid-row: auto;
   }
   
   .stats-grid {
@@ -420,6 +444,10 @@
 }
 
 @media (max-width: 480px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
   .stats-secondary {
     grid-template-columns: 1fr;
   }

@@ -27,11 +27,30 @@ const Employees = () => {
     joinDate: ''
   });
   const [formErrors, setFormErrors] = useState({});
+  const [savedDepartments, setSavedDepartments] = useState([]);
 
   const itemsPerPage = 5;
   const statusOptions = ['Active', 'Remote', 'On Leave', 'Inactive'];
   const currentCompanyId = user?.companyId || 'company-a';
   const currentCompanyName = currentCompanyId === 'company-b' ? 'Company B' : 'Company A';
+
+  const defaultDepartments = [
+    'IT Department',
+    'Engineering',
+    'Human Resources',
+    'Marketing',
+    'Sales',
+    'Finance',
+    'Operations',
+    'Product',
+    'Design',
+    'Data'
+  ];
+
+  const loadSavedDepartments = useCallback(() => {
+    const departmentsFromStorage = JSON.parse(localStorage.getItem('departments') || '[]');
+    setSavedDepartments(departmentsFromStorage);
+  }, []);
 
   // Load employees
   const loadEmployees = useCallback(async () => {
@@ -50,12 +69,29 @@ const Employees = () => {
 
   useEffect(() => {
     loadEmployees();
-  }, [loadEmployees]);
+    loadSavedDepartments();
+
+    const handleDepartmentsUpdated = () => {
+      loadSavedDepartments();
+    };
+
+    window.addEventListener('departmentsUpdated', handleDepartmentsUpdated);
+
+    return () => {
+      window.removeEventListener('departmentsUpdated', handleDepartmentsUpdated);
+    };
+  }, [loadEmployees, loadSavedDepartments]);
 
   const companyEmployees = employees.filter(emp => (emp.companyId || 'company-a') === currentCompanyId);
 
-  // Get unique departments
-  const departments = ['All Departments', ...new Set(companyEmployees.map(emp => emp.department))];
+  // Get unique departments from employees, saved departments, and defaults.
+  const departmentOptions = [
+    ...new Set(
+      [...companyEmployees.map(emp => emp.department), ...savedDepartments, ...defaultDepartments]
+        .filter(Boolean)
+    )
+  ].sort((a, b) => a.localeCompare(b));
+  const departments = ['All Departments', ...departmentOptions];
 
   // Filter employees
   const filteredEmployees = companyEmployees.filter(emp => {
@@ -539,16 +575,9 @@ const Employees = () => {
                     className={formErrors.department ? 'error' : ''}
                   >
                     <option value="">Select Department</option>
-                    <option>IT Department</option>
-                    <option>Engineering</option>
-                    <option>Human Resources</option>
-                    <option>Marketing</option>
-                    <option>Sales</option>
-                    <option>Finance</option>
-                    <option>Operations</option>
-                    <option>Product</option>
-                    <option>Design</option>
-                    <option>Data</option>
+                    {departmentOptions.map((department) => (
+                      <option key={department} value={department}>{department}</option>
+                    ))}
                   </select>
                   {formErrors.department && <span className="error-text">{formErrors.department}</span>}
                 </div>
@@ -593,8 +622,9 @@ const Employees = () => {
               <div className="form-group"><label>Email</label><input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className={formErrors.email ? 'error' : ''} />{formErrors.email && <span className="error-text">{formErrors.email}</span>}</div>
               <div className="form-group"><label>Role</label><input value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className={formErrors.role ? 'error' : ''} />{formErrors.role && <span className="error-text">{formErrors.role}</span>}</div>
               <div className="form-group"><label>Department</label><select value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
-                <option>Marketing</option><option>Data</option><option>Product</option><option>Human Resources</option>
-                <option>Design</option><option>Engineering</option><option>Sales</option><option>Finance</option>
+                {departmentOptions.map((department) => (
+                  <option key={department} value={department}>{department}</option>
+                ))}
               </select></div>
               <div className="form-group"><label>Status</label><select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                 <option>Active</option><option>Remote</option><option>On Leave</option><option>Inactive</option>

@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from app.controllers.role_request_controller import RoleRequestController
-from app.utils.auth import decode_access_token
+from app.utils.auth import get_current_active_user
+from app.database.models import User
 
 router = APIRouter()
-security = HTTPBearer()
 
 class RoleRequestCreateBody(BaseModel):
     current_password: str
@@ -17,16 +16,8 @@ class RoleRequestActionResponse(BaseModel):
     status: str
 
 @router.post('/auth/role-request')
-async def create_role_request(data: RoleRequestCreateBody, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
-    requester_email = payload.get('sub')
-    if not requester_email:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
+async def create_role_request(data: RoleRequestCreateBody, current_user: User = Depends(get_current_active_user)):
+    requester_email = current_user.email
     try:
         request_obj = RoleRequestController.submit_role_request(requester_email, data.current_password, data.admin_email)
         return {
@@ -46,16 +37,8 @@ async def create_role_request(data: RoleRequestCreateBody, credentials: HTTPAuth
         raise HTTPException(status_code=500, detail='Unable to create role request')
 
 @router.get('/auth/role-requests')
-async def list_user_role_requests(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
-    requester_email = payload.get('sub')
-    if not requester_email:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
+async def list_user_role_requests(current_user: User = Depends(get_current_active_user)):
+    requester_email = current_user.email
     try:
         requests = RoleRequestController.get_user_requests(requester_email)
         return [
@@ -79,13 +62,8 @@ async def list_user_role_requests(credentials: HTTPAuthorizationCredentials = De
 
 
 @router.get('/auth/role-requests/pending')
-async def list_pending_role_requests(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
-    admin_email = payload.get('sub')
+async def list_pending_role_requests(current_user: User = Depends(get_current_active_user)):
+    admin_email = current_user.email
     try:
         requests = RoleRequestController.get_pending_requests(admin_email)
         return [
@@ -108,13 +86,8 @@ async def list_pending_role_requests(credentials: HTTPAuthorizationCredentials =
         raise HTTPException(status_code=500, detail='Unable to fetch pending requests')
 
 @router.post('/auth/role-requests/{request_id}/approve')
-async def approve_role_request(request_id: int, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
-    admin_email = payload.get('sub')
+async def approve_role_request(request_id: int, current_user: User = Depends(get_current_active_user)):
+    admin_email = current_user.email
     try:
         request_obj = RoleRequestController.approve_request(request_id, admin_email)
         return {
@@ -129,13 +102,8 @@ async def approve_role_request(request_id: int, credentials: HTTPAuthorizationCr
         raise HTTPException(status_code=500, detail='Unable to approve request')
 
 @router.post('/auth/role-requests/{request_id}/reject')
-async def reject_role_request(request_id: int, credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail='Invalid token')
-
-    admin_email = payload.get('sub')
+async def reject_role_request(request_id: int, current_user: User = Depends(get_current_active_user)):
+    admin_email = current_user.email
     try:
         request_obj = RoleRequestController.reject_request(request_id, admin_email)
         return {

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from typing import List, Optional
 from app.controllers.employee_controller import EmployeeController
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
-from app.utils.auth import get_current_user
+from app.utils.auth import get_current_active_user
 from app.database.models import User
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 async def get_all_employees(
     department: Optional[str] = Query(None, description="Filter by department"),
     status: Optional[str] = Query(None, description="Filter by status"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Get all employees with optional filters
@@ -31,7 +31,7 @@ async def get_all_employees(
 @router.get("/employees/{employee_id}", response_model=dict)
 async def get_employee(
     employee_id: int,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Get employee by ID
@@ -43,7 +43,7 @@ async def get_employee(
 async def create_employee(
     employee: EmployeeCreate,
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Create a new employee with audit logging
@@ -60,7 +60,7 @@ async def update_employee(
     employee_id: int,
     employee: EmployeeUpdate,
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Update an existing employee with audit logging
@@ -79,7 +79,7 @@ async def update_employee(
 async def delete_employee(
     employee_id: int,
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Delete an employee with audit logging
@@ -92,7 +92,7 @@ async def delete_employee(
 
 
 @router.get("/stats/departments")
-async def get_department_stats(current_user: User = Depends(get_current_user)):
+async def get_department_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get department statistics
     """
@@ -100,7 +100,7 @@ async def get_department_stats(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/stats/status")
-async def get_status_stats(current_user: User = Depends(get_current_user)):
+async def get_status_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get status statistics
     """

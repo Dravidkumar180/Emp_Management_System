@@ -1,29 +1,142 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getAllEmployees } from '../services/api';
 import './Attendance.css';
 import { useNotifications } from '../context/NotificationContext';
 import { logAuditAction } from '../services/audit';
+import { useAuth } from '../context/AuthContext';
+
+const ACCESS_REQUESTS_KEY = 'attendanceAccessRequests';
+const USER_ATTENDANCE_KEY = 'userAttendanceRecords';
+const LEAVE_REQUESTS_KEY = 'userLeaveRequests';
+
+const todayKey = () => new Date().toISOString().split('T')[0];
+const normalizeCompanyId = (companyId) => companyId || 'company-a';
+const normalizeEmail = (email = '') => email.trim().toLowerCase();
+
+const readStorage = (key, fallback = []) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStorage = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('sv-SE').replace('T', ' ');
+};
+
+const statusLabel = (record) => {
+  if (!record) return 'Present';
+  if (record.checkIn && !record.checkOut) return 'Checked In';
+  return record.status || 'Present';
+};
+
+const statusClass = (status) => String(status || 'present').toLowerCase().replace(/\s+/g, '-');
+const isCurrentlyCheckedIn = (record) => Boolean(record?.checkIn && !record?.checkOut);
+
+const getRecentDates = (count = 7) => {
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - index);
+    return date.toISOString().split('T')[0];
+  });
+};
 
 const Attendance = () => {
+  const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [selectedDate, setSelectedDate] = useState(todayKey());
+  const [accessRequests, setAccessRequests] = useState([]);
+  const [userAttendance, setUserAttendance] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveForm, setLeaveForm] = useState({
+    type: 'Vacation',
+    startDate: '',
+    endDate: '',
+    reason: '',
+  });
+
+  const isUser = user?.role === 'user';
+  const userEmail = normalizeEmail(user?.email);
+  const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const itemsPerPage = 8;
 
+  const currentAccessRequest = useMemo(() => (
+    accessRequests.find((request) => request.email === userEmail && request.companyId === companyId)
+  ), [accessRequests, companyId, userEmail]);
+
+  const todayAttendance = useMemo(() => (
+    userAttendance.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey())
+  ), [companyId, userAttendance, userEmail]);
+
+  const myLeaveRequests = useMemo(() => (
+    leaveRequests.filter((request) => request.email === userEmail && request.companyId === companyId)
+  ), [companyId, leaveRequests, userEmail]);
+
   useEffect(() => {
+    setAccessRequests(readStorage(ACCESS_REQUESTS_KEY));
+    setUserAttendance(readStorage(USER_ATTENDANCE_KEY));
+    setLeaveRequests(readStorage(LEAVE_REQUESTS_KEY));
+  }, []);
+
+  useEffect(() => {
+    if (!isUser || !userEmail || !companyId) return;
+
+    const requests = readStorage(ACCESS_REQUESTS_KEY);
+    const existing = requests.find((request) => request.email === userEmail && request.companyId === companyId);
+    if (existing) {
+      setAccessRequests(requests);
+      return;
+    }
+
+    const request = {
+      id: Date.now(),
+      email: userEmail,
+      name: user?.name || userEmail.split('@')[0],
+      companyId,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      reviewedAt: null,
+      reviewedBy: null,
+    };
+    const nextRequests = [request, ...requests];
+    writeStorage(ACCESS_REQUESTS_KEY, nextRequests);
+    setAccessRequests(nextRequests);
+    logAuditAction({
+      action: 'Attendance Access Requested',
+      entityType: 'attendance',
+      entityId: request.id,
+      entityName: request.name,
+      details: `${request.name} requested attendance access`,
+      newValue: request,
+    });
+  }, [companyId, isUser, user?.name, userEmail]);
+
+  useEffect(() => {
+    if (isUser) {
+      setLoading(false);
+      return;
+    }
+
     loadAttendanceData();
-  }, [selectedDate]);
+  }, [selectedDate, user?.role]);
 
   const loadAttendanceData = async () => {
     try {
       setLoading(true);
       const employees = await getAllEmployees();
-      
-      // Generate attendance records for today
       const records = employees.map(emp => ({
         id: emp.id,
         employee: emp.name,
@@ -34,9 +147,9 @@ const Attendance = () => {
         email: emp.email,
         checkIn: getRandomTime('09:00', '10:30'),
         checkOut: getRandomTime('17:00', '18:30'),
-        hoursWorked: getRandomHours()
+        hoursWorked: getRandomHours(),
       }));
-      
+
       setAttendanceRecords(records);
       setFilteredRecords(records);
     } catch (error) {
@@ -72,26 +185,19 @@ const Attendance = () => {
     setCurrentPage(1);
   }, [searchTerm, attendanceRecords]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
   const paginatedRecords = filteredRecords.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Statistics
   const totalEmployees = attendanceRecords.length;
   const presentCount = attendanceRecords.filter(r => r.status === 'Active').length;
   const onLeaveCount = attendanceRecords.filter(r => r.status === 'On Leave').length;
   const inactiveCount = attendanceRecords.filter(r => r.status === 'Inactive').length;
   const remoteCount = attendanceRecords.filter(r => r.status === 'Remote').length;
-  const attendanceRate = Math.round((presentCount / totalEmployees) * 100);
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const { addNotification } = useNotifications();
+  const formatSubmittedAt = (value) => formatDateTime(value || new Date().toISOString());
 
   const handleDateChange = async (e) => {
     const nextDate = e.target.value;
@@ -103,7 +209,109 @@ const Attendance = () => {
       entityName: nextDate,
       details: `Attendance date changed to ${nextDate}`,
       oldValue: { date: selectedDate },
-      newValue: { date: nextDate }
+      newValue: { date: nextDate },
+    });
+  };
+
+  const saveUserAttendance = (records) => {
+    writeStorage(USER_ATTENDANCE_KEY, records);
+    setUserAttendance(records);
+  };
+
+  const handleCheckIn = async () => {
+    const records = readStorage(USER_ATTENDANCE_KEY);
+    const now = new Date().toISOString();
+    const existing = records.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey());
+    if (isCurrentlyCheckedIn(existing)) return;
+
+    const nextRecord = {
+      id: existing?.id || Date.now(),
+      email: userEmail,
+      name: user?.name || userEmail.split('@')[0],
+      companyId,
+      department: user?.department || 'General Department',
+      date: todayKey(),
+      status: 'Present',
+      checkIn: now,
+      checkOut: null,
+      lastCheckOut: existing?.checkOut || existing?.lastCheckOut || null,
+      sessions: existing?.sessions || [],
+    };
+    const nextRecords = existing
+      ? records.map((record) => record.id === existing.id ? nextRecord : record)
+      : [nextRecord, ...records];
+    saveUserAttendance(nextRecords);
+    addNotification({ type: 'success', title: 'Checked In', message: `Checked in at ${formatDateTime(now)}` });
+    await logAuditAction({
+      action: 'Attendance Check In',
+      entityType: 'attendance',
+      entityId: nextRecord.id,
+      entityName: nextRecord.name,
+      details: `${nextRecord.name} checked in`,
+      oldValue: existing || null,
+      newValue: nextRecord,
+    });
+  };
+
+  const handleCheckOut = async () => {
+    const records = readStorage(USER_ATTENDANCE_KEY);
+    const now = new Date().toISOString();
+    const existing = records.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey());
+    if (!isCurrentlyCheckedIn(existing)) return;
+
+    const completedSession = { checkIn: existing.checkIn, checkOut: now };
+    const nextRecord = {
+      ...existing,
+      status: 'Present',
+      checkOut: now,
+      lastCheckOut: now,
+      sessions: [...(existing.sessions || []), completedSession],
+    };
+    const nextRecords = records.map((record) => record.id === existing.id ? nextRecord : record);
+    saveUserAttendance(nextRecords);
+    addNotification({ type: 'success', title: 'Checked Out', message: `Checked out at ${formatDateTime(now)}` });
+    await logAuditAction({
+      action: 'Attendance Check Out',
+      entityType: 'attendance',
+      entityId: nextRecord.id,
+      entityName: nextRecord.name,
+      details: `${nextRecord.name} checked out`,
+      oldValue: existing,
+      newValue: nextRecord,
+    });
+  };
+
+  const handleLeaveSubmit = async (e) => {
+    e.preventDefault();
+    if (!leaveForm.startDate || !leaveForm.endDate) {
+      addNotification({ type: 'warning', title: 'Leave Request', message: 'Please select start and end dates.' });
+      return;
+    }
+
+    const request = {
+      id: Date.now(),
+      email: userEmail,
+      name: user?.name || userEmail.split('@')[0],
+      companyId,
+      type: leaveForm.type,
+      startDate: leaveForm.startDate,
+      endDate: leaveForm.endDate,
+      reason: leaveForm.reason,
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+    };
+    const requests = [request, ...readStorage(LEAVE_REQUESTS_KEY)];
+    writeStorage(LEAVE_REQUESTS_KEY, requests);
+    setLeaveRequests(requests);
+    setLeaveForm({ type: 'Vacation', startDate: '', endDate: '', reason: '' });
+    addNotification({ type: 'success', title: 'Leave Requested', message: 'Your leave request was submitted.' });
+    await logAuditAction({
+      action: 'Leave Request Submitted',
+      entityType: 'attendance',
+      entityId: request.id,
+      entityName: request.name,
+      details: `${request.name} requested ${request.type} leave`,
+      newValue: request,
     });
   };
 
@@ -116,7 +324,7 @@ const Attendance = () => {
         Status: r.status,
         'Check In': r.checkIn || '-',
         'Check Out': r.checkOut || '-',
-        Hours: r.hoursWorked || '-'
+        Hours: r.hoursWorked || '-',
       }));
 
       if (rows.length === 0) {
@@ -146,7 +354,7 @@ const Attendance = () => {
         entityType: 'attendance',
         entityName: selectedDate,
         details: `Attendance report downloaded for ${selectedDate}`,
-        newValue: { date: selectedDate, records: rows.length, fileName }
+        newValue: { date: selectedDate, records: rows.length, fileName },
       });
     } catch (e) {
       console.error('Download failed', e);
@@ -154,147 +362,272 @@ const Attendance = () => {
     }
   };
 
-  return (
-      <div className="attendance-page">
-        {/* Header */}
+  const renderUserAttendance = () => {
+    if (currentAccessRequest?.status !== 'approved') {
+      return (
+        <div className="attendance-page attendance-user-page">
+          <div className="attendance-header">
+            <h1>Attendance</h1>
+            <p>Check in/out for today and submit leave requests for admin approval.</p>
+          </div>
+
+          <div className="attendance-access-card">
+            <h2>{currentAccessRequest?.status === 'rejected' ? 'Attendance Access Rejected' : 'Attendance Access Pending'}</h2>
+            <p>
+              {currentAccessRequest?.status === 'rejected'
+                ? 'Your attendance access request was rejected. Please contact your company admin.'
+                : 'Your account is waiting for attendance access approval from your company admin.'}
+            </p>
+            <span>Submitted on {formatSubmittedAt(currentAccessRequest?.submittedAt || user?.created_at || user?.createdAt)}</span>
+          </div>
+        </div>
+      );
+    }
+
+    const recentAttendance = getRecentDates().map((date, index) => {
+      const record = userAttendance.find((item) => item.email === userEmail && item.companyId === companyId && item.date === date);
+      if (record) return record;
+      const fallbackStatuses = ['Present', 'Absent', 'Present', 'Present', 'Late', 'Present'];
+      return {
+        id: `${userEmail}-${date}`,
+        date,
+        status: index === 0 ? 'Present' : fallbackStatuses[index % fallbackStatuses.length],
+        checkIn: null,
+        checkOut: null,
+      };
+    });
+    const checkedInNow = isCurrentlyCheckedIn(todayAttendance);
+
+    return (
+      <div className="attendance-page attendance-user-page">
         <div className="attendance-header">
           <h1>Attendance</h1>
-          <p>Track daily attendance records by employee.</p>
+          <p>Check in/out for today and submit leave requests for admin approval.</p>
         </div>
 
-        {/* Filters */}
-        <div className="attendance-filters">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search by employee name or department..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="filters-right">
-            <div className="date-picker">
-              <label>Date:</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={handleDateChange}
-              />
+        <div className="attendance-user-grid">
+          <section className="attendance-card today-card">
+            <div className="attendance-section-title">
+              <span className="title-icon">[]</span>
+              <div>
+                <h2>Today's Attendance</h2>
+                <p>{user?.name || userEmail.split('@')[0]} - {todayAttendance?.department || 'General Department'}</p>
+              </div>
             </div>
-            <button className="download-report-btn" onClick={downloadReport} title="Download CSV report">⬇️ Download Report</button>
-          </div>
+            <span className={`wide-status status-${statusClass(statusLabel(todayAttendance))}`}>{statusLabel(todayAttendance)}</span>
+            <p className="check-time">
+              {checkedInNow ? `Checked in ${formatDateTime(todayAttendance.checkIn)}` : 'Not checked in'}
+            </p>
+            {!checkedInNow && todayAttendance?.lastCheckOut && (
+              <p className="check-time">Last checked out {formatDateTime(todayAttendance.lastCheckOut)}</p>
+            )}
+            <div className="attendance-actions">
+              <button className="check-btn check-in-btn" onClick={handleCheckIn} disabled={checkedInNow}>
+                {'-> Check In'}
+              </button>
+              <button className="check-btn check-out-btn" onClick={handleCheckOut} disabled={!checkedInNow}>
+                {'<- Check Out'}
+              </button>
+            </div>
+          </section>
+
+          <section className="attendance-card leave-card">
+            <h2>Request Leave</h2>
+            <form onSubmit={handleLeaveSubmit} className="leave-form">
+              <label>
+                <span>Leave type</span>
+                <select value={leaveForm.type} onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value })}>
+                  <option value="Vacation">Vacation</option>
+                  <option value="Medical">Medical</option>
+                </select>
+              </label>
+              <label>
+                <span>Start date</span>
+                <input type="date" value={leaveForm.startDate} onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })} />
+              </label>
+              <label>
+                <span>End date</span>
+                <input type="date" value={leaveForm.endDate} onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })} />
+              </label>
+              <label className="reason-field">
+                <span>Reason (optional)</span>
+                <textarea value={leaveForm.reason} onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })} placeholder="Brief reason for your leave request" />
+              </label>
+              <button type="submit" className="submit-leave-btn">Submit Leave Request</button>
+            </form>
+          </section>
         </div>
 
-        {/* Attendance Table */}
-        <div className="attendance-table-wrapper">
-          <table className="attendance-table">
+        <section className="attendance-card attendance-list-card">
+          <h2>Recent Attendance</h2>
+          <table className="user-attendance-table">
             <thead>
               <tr>
-                <th>EMPLOYEE</th>
-                <th>DEPARTMENT</th>
                 <th>DATE</th>
                 <th>STATUS</th>
                 <th>CHECK IN</th>
                 <th>CHECK OUT</th>
-                <th>HOURS</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="no-data">
-                    No attendance records found
-                  </td>
+              {recentAttendance.map((record) => (
+                <tr key={record.id}>
+                  <td>{record.date}</td>
+                  <td><span className={`mini-status status-${statusClass(record.status)}`}>{record.status}</span></td>
+                  <td>{formatDateTime(record.checkIn)}</td>
+                  <td>{formatDateTime(record.checkOut)}</td>
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="attendance-card attendance-list-card">
+          <h2>My Leave Requests</h2>
+          <table className="user-attendance-table">
+            <thead>
+              <tr>
+                <th>TYPE</th>
+                <th>DATES</th>
+                <th>STATUS</th>
+                <th>REASON</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myLeaveRequests.length === 0 ? (
+                <tr><td colSpan="4" className="no-data">No leave requests submitted</td></tr>
               ) : (
-                paginatedRecords.map(record => (
-                  <tr key={record.id}>
-                    <td>
-                      <div className="employee-info">
-                        <div className="employee-avatar">{record.avatar}</div>
-                        <div>
-                          <div className="employee-name">{record.employee}</div>
-                          <div className="employee-email">{record.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{record.department}</td>
-                    <td>{record.date}</td>
-                    <td>
-                      <span className={`attendance-status status-${record.status.toLowerCase().replace(' ', '-')}`}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td>{record.status === 'Active' ? record.checkIn : '-'}</td>
-                    <td>{record.status === 'Active' ? record.checkOut : '-'}</td>
-                    <td>{record.status === 'Active' ? `${record.hoursWorked} hrs` : '-'}</td>
+                myLeaveRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td>{request.type}</td>
+                    <td>{request.startDate} - {request.endDate}</td>
+                    <td>{request.status}</td>
+                    <td>{request.reason || '-'}</td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </section>
+      </div>
+    );
+  };
+
+  if (isUser) {
+    return renderUserAttendance();
+  }
+
+  return (
+    <div className="attendance-page">
+      <div className="attendance-header">
+        <h1>Attendance</h1>
+        <p>Track daily attendance records by employee.</p>
+      </div>
+
+      <div className="attendance-filters">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search by employee name or department..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-
-       {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="pagination-numbers">
-              <button 
-                className="page-nav"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                ←
-              </button>
-              
-              {[...Array(totalPages)].map((_, index) => {
-                const pageNumber = index + 1;
-                if (
-                  pageNumber === 1 ||
-                  pageNumber === totalPages ||
-                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={pageNumber}
-                      className={`page-number ${currentPage === pageNumber ? 'active' : ''}`}
-                      onClick={() => handlePageChange(pageNumber)}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                } else if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
-                  return <span key={pageNumber} className="page-dots">...</span>;
-                }
-                return null;
-              })}
-              
-              <button 
-                className="page-nav"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                →
-              </button>
-            </div>
-          )}
-
-        {/* Summary Footer */}
-        <div className="attendance-footer">
-          <div className="summary">
-            <span className="summary-dot active"></span>
-            <span>Present: {presentCount}</span>
-            <span className="summary-dot leave"></span>
-            <span>On Leave: {onLeaveCount}</span>
-            <span className="summary-dot remote"></span>
-            <span>Remote: {remoteCount}</span>
-            <span className="summary-dot inactive"></span>
-            <span>Inactive: {inactiveCount}</span>
+        <div className="filters-right">
+          <div className="date-picker">
+            <label>Date:</label>
+            <input type="date" value={selectedDate} onChange={handleDateChange} />
           </div>
-          <div className="update-time">
-            Last updated: {new Date().toLocaleTimeString()}
-          </div>
+          <button className="download-report-btn" onClick={downloadReport} title="Download CSV report">Download Report</button>
         </div>
       </div>
+
+      <div className="attendance-table-wrapper">
+        <table className="attendance-table">
+          <thead>
+            <tr>
+              <th>EMPLOYEE</th>
+              <th>DEPARTMENT</th>
+              <th>DATE</th>
+              <th>STATUS</th>
+              <th>CHECK IN</th>
+              <th>CHECK OUT</th>
+              <th>HOURS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedRecords.length === 0 ? (
+              <tr><td colSpan="7" className="no-data">{loading ? 'Loading attendance...' : 'No attendance records found'}</td></tr>
+            ) : (
+              paginatedRecords.map(record => (
+                <tr key={record.id}>
+                  <td>
+                    <div className="employee-info">
+                      <div className="employee-avatar">{record.avatar}</div>
+                      <div>
+                        <div className="employee-name">{record.employee}</div>
+                        <div className="employee-email">{record.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{record.department}</td>
+                  <td>{record.date}</td>
+                  <td>
+                    <span className={`attendance-status status-${record.status.toLowerCase().replace(' ', '-')}`}>
+                      {record.status}
+                    </span>
+                  </td>
+                  <td>{record.status === 'Active' ? record.checkIn : '-'}</td>
+                  <td>{record.status === 'Active' ? record.checkOut : '-'}</td>
+                  <td>{record.status === 'Active' ? `${record.hoursWorked} hrs` : '-'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="pagination-numbers">
+          <button className="page-nav" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>Prev</button>
+          {[...Array(totalPages)].map((_, index) => {
+            const pageNumber = index + 1;
+            if (pageNumber === 1 || pageNumber === totalPages || (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)) {
+              return (
+                <button
+                  key={pageNumber}
+                  className={`page-number ${currentPage === pageNumber ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              );
+            }
+            if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+              return <span key={pageNumber} className="page-dots">...</span>;
+            }
+            return null;
+          })}
+          <button className="page-nav" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>Next</button>
+        </div>
+      )}
+
+      <div className="attendance-footer">
+        <div className="summary">
+          <span className="summary-dot active"></span>
+          <span>Present: {presentCount}</span>
+          <span className="summary-dot leave"></span>
+          <span>On Leave: {onLeaveCount}</span>
+          <span className="summary-dot remote"></span>
+          <span>Remote: {remoteCount}</span>
+          <span className="summary-dot inactive"></span>
+          <span>Inactive: {inactiveCount}</span>
+        </div>
+        <div className="update-time">
+          Last updated: {new Date().toLocaleTimeString()} - Total employees: {totalEmployees}
+        </div>
+      </div>
+    </div>
   );
 };
 

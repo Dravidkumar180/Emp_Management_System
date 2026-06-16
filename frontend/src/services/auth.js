@@ -10,14 +10,15 @@ const api = axios.create({
 });
 
 // Register new user
-export const registerUser = async (name, email, password, role = 'user', companyId = 'company-a') => {
+export const registerUser = async (name, email, password, role = 'user', companyId = 'company-a', inviteToken = null) => {
   try {
     const response = await api.post('/auth/register', {
       name,
       email,
       password,
       role,
-      company_id: companyId
+      company_id: companyId,
+      invite_token: inviteToken
     });
     toast.success('Registration successful! Please login.');
     return response.data;
@@ -173,6 +174,79 @@ export const rejectRoleRequest = async (requestId) => {
     return response.data;
   } catch (error) {
     console.error('Reject role request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to reject request');
+    throw error;
+  }
+};
+
+export const submitReactivationRequest = async (message) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(
+      '/auth/reactivation-request',
+      { message },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    toast.success('Reactivation request submitted.');
+    return response.data;
+  } catch (error) {
+    console.error('Submit reactivation request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to submit reactivation request');
+    throw error;
+  }
+};
+
+export const fetchMyReactivationRequests = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await api.get('/auth/reactivation-requests/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const fetchPendingReactivationRequests = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await api.get('/auth/reactivation-requests/pending', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const approveReactivationRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/reactivation-requests/${requestId}/approve`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Account reactivated.');
+    return response.data;
+  } catch (error) {
+    console.error('Approve reactivation request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to approve request');
+    throw error;
+  }
+};
+
+export const rejectReactivationRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/reactivation-requests/${requestId}/reject`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Reactivation request rejected.');
+    return response.data;
+  } catch (error) {
+    console.error('Reject reactivation request error:', error);
     toast.error(error.response?.data?.detail || 'Unable to reject request');
     throw error;
   }

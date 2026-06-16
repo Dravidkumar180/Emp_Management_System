@@ -41,10 +41,10 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [notifications, storageKey]);
 
-  const addNotification = useCallback(({ type = 'info', title = '', message = '' }) => {
+  const addNotification = useCallback(({ type = 'info', title = '', message = '', ...rest }) => {
     const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     const time = new Date().toISOString();
-    const notif = { id, type, title, message, time };
+    const notif = { id, type, title, message, time, ...rest };
     setNotifications((prev) => [notif, ...prev]);
   }, []);
 

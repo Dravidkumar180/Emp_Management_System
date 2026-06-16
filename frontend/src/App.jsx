@@ -12,8 +12,10 @@ import Departments from './pages/Departments';
 import Attendance from './pages/Attendance';
 import Companies from './pages/Companies';
 import AuditLogs from './pages/AuditLogs';
+import Users from './pages/Users';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
+import AccountDeactivated from './pages/AccountDeactivated';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/App.css';
@@ -25,7 +27,10 @@ const HomeRedirect = () => {
     return null;
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  return user.is_active === false
+    ? <Navigate to="/account-deactivated" replace />
+    : <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -37,6 +42,7 @@ function App() {
           <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/account-deactivated" element={<AccountDeactivated />} />
             <Route path="/" element={<HomeRedirect />} />
             
             <Route path="/dashboard" element={
@@ -64,7 +70,7 @@ function App() {
             } />
             
             <Route path="/attendance" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
                   <Attendance />
                 </DashboardLayout>
@@ -72,7 +78,7 @@ function App() {
             } />
 
             <Route path="/companies" element={
-              <ProtectedRoute allowedRoles={['super_admin', 'admin', 'user']}>
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
                   <Companies />
                 </DashboardLayout>
@@ -82,6 +88,14 @@ function App() {
             <Route path="/audit-logs" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <AuditLogs />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/users" element={
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+                <DashboardLayout>
+                  <Users />
+                </DashboardLayout>
               </ProtectedRoute>
             } />
             

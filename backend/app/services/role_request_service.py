@@ -89,7 +89,7 @@ class RoleRequestService:
             if requester.company_id != admin_user.company_id:
                 raise ValueError('This request belongs to another company')
 
-            requester.role = 'user'
+            requester.role = 'admin'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'approved', reviewer_id=admin_user.id)
             return updated_request
         finally:
@@ -120,7 +120,6 @@ class RoleRequestService:
             if requester.company_id != admin_user.company_id:
                 raise ValueError('This request belongs to another company')
 
-            requester.role = 'user'
             updated_request = RoleRequestRepository.update_status(db, role_request, 'rejected', reviewer_id=admin_user.id)
             return updated_request
         finally:

@@ -57,7 +57,7 @@ const Sidebar = () => {
           <path d="M15 14L12 17M9 14L12 17M12 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       ),
-      roles: ['super_admin', 'admin']
+      roles: ['super_admin', 'admin', 'user']
     },
     { 
       path: '/companies', 
@@ -71,7 +71,7 @@ const Sidebar = () => {
           <line x1="19" y1="12" x2="17" y2="12" stroke="currentColor" strokeWidth="2"/>
         </svg>
       ),
-      roles: ['super_admin', 'admin', 'user']
+      roles: ['super_admin', 'admin']
     },
     { 
       path: '/audit-logs', 
@@ -80,6 +80,19 @@ const Sidebar = () => {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2"/>
           <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+        </svg>
+      ),
+      roles: ['super_admin', 'admin']
+    },
+    {
+      path: '/users',
+      name: 'Users',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 21V19C16 16.8 14.2 15 12 15H6C3.8 15 2 16.8 2 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+          <path d="M19 8V14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M22 11H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       ),
       roles: ['super_admin', 'admin']

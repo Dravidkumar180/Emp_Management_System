@@ -18,29 +18,34 @@ const Departments = () => {
 
   const { addNotification } = useNotifications();
 
+  const getSavedDepartments = () => {
+    return JSON.parse(localStorage.getItem('departments') || '[]');
+  };
+
+  const buildDepartmentList = (employees, savedDepartments) => {
+    const deptMap = {};
+    employees.forEach(emp => {
+      if (emp.department) {
+        deptMap[emp.department] = (deptMap[emp.department] || 0) + 1;
+      }
+    });
+
+    const departmentNames = new Map();
+    Object.keys(deptMap).forEach((name) => departmentNames.set(name.toLowerCase(), name));
+    savedDepartments.forEach((name) => {
+      if (name) departmentNames.set(name.toLowerCase(), name);
+    });
+
+    return [...departmentNames.values()]
+      .map((name) => ({ name, count: deptMap[name] || 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
   const loadDepartments = async () => {
     try {
       setLoading(true);
       const employees = await getAllEmployees();
-      
-      // Calculate department counts
-      const deptMap = {};
-      employees.forEach(emp => {
-        if (emp.department) {
-          deptMap[emp.department] = (deptMap[emp.department] || 0) + 1;
-        }
-      });
-      
-      // Convert to array and sort alphabetically
-      const deptList = Object.entries(deptMap)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      
-      const savedDepartments = JSON.parse(localStorage.getItem('departments') || '[]');
-      const customDepartments = savedDepartments
-        .filter((name) => !deptMap[name])
-        .map((name) => ({ name, count: 0 }));
-      setDepartments([...deptList, ...customDepartments]);
+      setDepartments(buildDepartmentList(employees, getSavedDepartments()));
     } catch (error) {
       console.error('Error loading departments:', error);
     } finally {
@@ -60,11 +65,15 @@ const Departments = () => {
       return;
     }
 
-    const savedDepartments = JSON.parse(localStorage.getItem('departments') || '[]');
-    const updatedDepartments = [...savedDepartments, trimmedName];
+    const savedDepartments = getSavedDepartments();
+    const updatedDepartments = [...savedDepartments, trimmedName]
+      .filter((name, index, list) => (
+        list.findIndex((item) => item.toLowerCase() === name.toLowerCase()) === index
+      ));
     localStorage.setItem('departments', JSON.stringify(updatedDepartments));
 
-    setDepartments((prev) => [...prev, { name: trimmedName, count: 0 }]);
+    setDepartments((prev) => [...prev, { name: trimmedName, count: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
+    window.dispatchEvent(new CustomEvent('departmentsUpdated', { detail: { department: trimmedName } }));
     setNewDepartment('');
     setAddError('');
     setShowAddModal(false);

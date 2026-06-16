@@ -2,6 +2,8 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate
 from app.utils.auth import verify_password, create_access_token
 from app.database.database import SessionLocal
+from app.services.user_invitation_service import UserInvitationService
+from fastapi import HTTPException
 import traceback
 
 COMPANY_SLUG_TO_ID = {
@@ -35,7 +37,16 @@ class AuthService:
             user_data['email'] = user_data['email'].strip().lower()
             user_data['name'] = user_data['name'].strip()
             user_data['role'] = user_data.get('role', 'user').strip().lower()
-            user_data['company_id'] = normalize_company_id(user_data.get('company_id')) or 1
+            invite_token = user_data.pop('invite_token', None)
+            invitation = None
+            if invite_token:
+                invitation = UserInvitationService.validate_invitation_for_registration(
+                    db, invite_token, user_data['email']
+                )
+                user_data['role'] = invitation.role
+                user_data['company_id'] = invitation.company_id
+            else:
+                user_data['company_id'] = normalize_company_id(user_data.get('company_id')) or 1
 
             # Check if user exists
             existing = UserRepository.get_by_email(db, user_data['email'])
@@ -46,6 +57,8 @@ class AuthService:
             # Create user
             user_create = UserCreate(**user_data)
             new_user = UserRepository.create(db, user_create)
+            if invitation:
+                UserInvitationService.mark_accepted(db, invitation, new_user.id)
             
             print(f"[+] User created: {new_user.email}")
             return {
@@ -55,6 +68,8 @@ class AuthService:
                 "role": new_user.role,
                 "company_id": new_user.company_id
             }
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"[-] Registration error: {e}")
             print(traceback.format_exc())
@@ -72,16 +87,16 @@ class AuthService:
             if not user:
                 print(f"[-] User not found: {login_data['email']}")
                 return None
-            
+
             if not verify_password(login_data["password"], user.password):
                 print(f"[-] Invalid password for: {login_data['email']}")
                 return None
 
             requested_company_id = normalize_company_id(login_data.get("company_id"))
             if requested_company_id and user.company_id != requested_company_id:
-                user = UserRepository.update_company(db, user.id, requested_company_id) or user
+                raise HTTPException(status_code=403, detail="User does not belong to the requested company")
 
-            final_company_id = user.company_id or requested_company_id or 1
+            final_company_id = user.company_id or 1
             if user.company_id != final_company_id:
                 user = UserRepository.update_company(db, user.id, final_company_id) or user
             
@@ -98,9 +113,15 @@ class AuthService:
                     "name": user.name,
                     "email": user.email,
                     "role": user.role,
-                    "company_id": final_company_id
+                    "company_id": final_company_id,
+                    "is_active": user.is_active,
+                    "deactivated_by_user_id": user.deactivated_by_user_id,
+                    "deactivated_by_name": user.deactivated_by_name,
+                    "deactivated_at": user.deactivated_at.isoformat() if user.deactivated_at else None
                 }
             }
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"[-] Login error: {e}")
             print(traceback.format_exc())

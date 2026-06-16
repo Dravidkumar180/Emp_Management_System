@@ -114,7 +114,12 @@
 }
 
 .admin-approvals-panel {
-  max-width: 620px;
+  max-width: none;
+}
+
+.admin-approvals-stack {
+  display: grid;
+  gap: 18px;
 }
 
 .approval-list {
@@ -145,6 +150,19 @@
   color: #475569;
   font-size: 13px;
   font-weight: 600;
+}
+
+.approval-user small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reactivation-approval-row,
+.leave-approval-row {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
 }
 
 .approval-actions {

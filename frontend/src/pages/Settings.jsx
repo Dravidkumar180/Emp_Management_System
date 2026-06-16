@@ -1,14 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { fetchMyRoleRequests, fetchPendingRoleRequests, approveRoleRequest, rejectRoleRequest, submitRoleChangeRequest } from '../services/auth';
+import {
+  fetchMyRoleRequests,
+  fetchPendingRoleRequests,
+  approveRoleRequest,
+  rejectRoleRequest,
+  submitRoleChangeRequest,
+  fetchPendingReactivationRequests,
+  approveReactivationRequest,
+  rejectReactivationRequest
+} from '../services/auth';
 import './Settings.css';
 import { useNotifications } from '../context/NotificationContext';
+import { logAuditAction } from '../services/audit';
+
+const LEAVE_REQUESTS_KEY = 'userLeaveRequests';
+
+const readStorage = (key, fallback = []) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+};
+
+const writeStorage = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
 
 const Settings = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const userCompanyId = user?.companyId || user?.company_id || 'company-a';
 
   // Notification Settings
   const [notificationSettings, setNotificationSettings] = useState({
@@ -57,6 +82,10 @@ const Settings = () => {
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsMessage, setRequestsMessage] = useState('');
   const [adminActionLoading, setAdminActionLoading] = useState(false);
+  const [reactivationRequests, setReactivationRequests] = useState([]);
+  const [reactivationMessage, setReactivationMessage] = useState('');
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveMessage, setLeaveMessage] = useState('');
 
   // Appearance Settings
   const [appearanceSettings, setAppearanceSettings] = useState({
@@ -98,6 +127,15 @@ const Settings = () => {
         ? await fetchPendingRoleRequests()
         : await fetchMyRoleRequests();
       setRequests(data);
+      if (isAdmin) {
+        const reactivationData = await fetchPendingReactivationRequests();
+        setReactivationRequests(reactivationData);
+        setLeaveRequests(
+          readStorage(LEAVE_REQUESTS_KEY).filter((request) => (
+            request.companyId === userCompanyId && request.status === 'pending'
+          ))
+        );
+      }
     } catch (error) {
       setRequestsMessage(error.response?.data?.detail || 'Unable to load requests.');
     } finally {
@@ -109,7 +147,7 @@ const Settings = () => {
     if (user && activeTab === 'roleRequest') {
       loadRequests();
     }
-  }, [activeTab, user]);
+  }, [activeTab, user, userCompanyId]);
 
   const handleRoleRequest = async (event) => {
     event.preventDefault();
@@ -172,6 +210,74 @@ const Settings = () => {
     setAppearanceSettings({ ...appearanceSettings, [key]: value });
     if (key === 'theme') {
       toggleDarkMode();
+    }
+  };
+
+  const handleReactivationAction = async (requestId, action) => {
+    setAdminActionLoading(true);
+    setReactivationMessage('');
+    try {
+      if (action === 'approve') {
+        await approveReactivationRequest(requestId);
+        setReactivationMessage('Account reactivated successfully.');
+      } else {
+        await rejectReactivationRequest(requestId);
+        setReactivationMessage('Reactivation request rejected.');
+      }
+      await loadRequests();
+    } catch (error) {
+      setReactivationMessage(error.response?.data?.detail || 'Unable to update reactivation request.');
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const handleLeaveAction = async (requestId, action) => {
+    setAdminActionLoading(true);
+    setLeaveMessage('');
+    try {
+      const requests = readStorage(LEAVE_REQUESTS_KEY);
+      const oldRequest = requests.find((request) => request.id === requestId);
+      if (!oldRequest) {
+        setLeaveMessage('Leave request not found.');
+        return;
+      }
+
+      const nextStatus = action === 'approve' ? 'approved' : 'rejected';
+      const updatedRequest = {
+        ...oldRequest,
+        status: nextStatus,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: user?.name || user?.email || 'Admin',
+      };
+      const nextRequests = requests.map((request) => (
+        request.id === requestId ? updatedRequest : request
+      ));
+      writeStorage(LEAVE_REQUESTS_KEY, nextRequests);
+      setLeaveRequests(nextRequests.filter((request) => (
+        request.companyId === userCompanyId && request.status === 'pending'
+      )));
+
+      const approved = nextStatus === 'approved';
+      setLeaveMessage(`Leave request ${nextStatus} successfully.`);
+      addNotification({
+        type: approved ? 'success' : 'info',
+        title: approved ? 'Leave Approved' : 'Leave Rejected',
+        message: `${updatedRequest.name || updatedRequest.email}'s ${updatedRequest.type} leave was ${nextStatus}.`,
+      });
+      await logAuditAction({
+        action: approved ? 'Leave Request Approved' : 'Leave Request Rejected',
+        entityType: 'attendance',
+        entityId: updatedRequest.id,
+        entityName: updatedRequest.name || updatedRequest.email,
+        details: `${updatedRequest.type} leave request ${nextStatus} for ${updatedRequest.email}`,
+        oldValue: oldRequest,
+        newValue: updatedRequest,
+      });
+    } catch (error) {
+      setLeaveMessage('Unable to update leave request.');
+    } finally {
+      setAdminActionLoading(false);
     }
   };
 
@@ -618,14 +724,15 @@ const Settings = () => {
 
           <main className="user-settings-content">
             {activeTab === 'roleRequest' && (
+              <div className="admin-approvals-stack">
               <section className="user-role-request admin-approvals-panel">
-                <h2>Role Approvals</h2>
+                <h2>Pending Role Requests</h2>
                 <p>Manage pending role upgrade requests.</p>
 
                 {requestsLoading ? (
                   <div className="role-requests-loading">Loading approvals...</div>
                 ) : requests.length === 0 ? (
-                  <div className="role-requests-empty">No pending approvals.</div>
+                  <div className="role-requests-empty">No pending role change requests for {user?.email}.</div>
                 ) : (
                   <div className="approval-list">
                     {requests.map((request) => (
@@ -658,6 +765,86 @@ const Settings = () => {
                 )}
                 {requestsMessage && <div className="role-request-message">{requestsMessage}</div>}
               </section>
+              <section className="user-role-request admin-approvals-panel">
+                <h2>Pending Reactivation Requests</h2>
+                {requestsLoading ? (
+                  <div className="role-requests-loading">Loading reactivation requests...</div>
+                ) : reactivationRequests.length === 0 ? (
+                  <div className="role-requests-empty">No pending reactivation requests for {user?.email}.</div>
+                ) : (
+                  <div className="approval-list">
+                    {reactivationRequests.map((request) => (
+                      <div key={request.id} className="approval-row reactivation-approval-row">
+                        <div className="approval-user">
+                          <strong>{request.requester_name}</strong>
+                          <span>{request.requester_email} requested account reactivation.</span>
+                          {request.message && <small>Message: {request.message}</small>}
+                        </div>
+                        <div className="approval-actions">
+                          <button
+                            className="approval-approve"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleReactivationAction(request.id, 'approve')}
+                          >
+                            Reactivate
+                          </button>
+                          <button
+                            className="approval-reject"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleReactivationAction(request.id, 'reject')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {reactivationMessage && <div className="role-request-message">{reactivationMessage}</div>}
+              </section>
+              <section className="user-role-request admin-approvals-panel">
+                <h2>Pending Leave Requests</h2>
+                <p>Approve or reject submitted vacation and medical leave requests.</p>
+                {requestsLoading ? (
+                  <div className="role-requests-loading">Loading leave requests...</div>
+                ) : leaveRequests.length === 0 ? (
+                  <div className="role-requests-empty">No pending leave requests for {user?.email}.</div>
+                ) : (
+                  <div className="approval-list">
+                    {leaveRequests.map((request) => (
+                      <div key={request.id} className="approval-row leave-approval-row">
+                        <div className="approval-user">
+                          <strong>{request.name || request.email}</strong>
+                          <span>{request.type} leave: {request.startDate} - {request.endDate}</span>
+                          <small>{request.reason ? `Reason: ${request.reason}` : 'No reason provided'}</small>
+                        </div>
+                        <div className="approval-actions">
+                          <button
+                            className="approval-approve"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleLeaveAction(request.id, 'approve')}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="approval-reject"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleLeaveAction(request.id, 'reject')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {leaveMessage && <div className="role-request-message">{leaveMessage}</div>}
+              </section>
+              </div>
             )}
 
             {activeTab === 'profile' && (

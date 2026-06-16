@@ -103,8 +103,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         
-        # Keep role from DB so stale tokens cannot upgrade or downgrade the current account.
-        user.company_id = payload.get("company_id") or user.company_id
+        # Keep role and company from DB so stale tokens cannot change account scope.
         
         return user
     finally:
@@ -138,6 +137,8 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
     Raises:
         HTTPException 403 if user is not admin
     """
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Inactive user")
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
@@ -153,6 +154,8 @@ async def get_super_admin(current_user: User = Depends(get_current_user)) -> Use
     Raises:
         HTTPException 403 if user is not super admin
     """
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Inactive user")
     if current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin access required")
     return current_user
@@ -168,6 +171,8 @@ async def get_company_user(current_user: User = Depends(get_current_user)) -> Us
     Raises:
         HTTPException 403 if user has no company
     """
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Inactive user")
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User does not belong to any company")
     return current_user
@@ -190,18 +195,8 @@ def get_current_company_id(
     """
     company_id = normalize_company_id(current_user.company_id)
 
-    if company_id is None:
-        header_company_id = normalize_company_id(request.headers.get("x-company-id"))
-        if header_company_id is not None:
-            company_id = header_company_id
-
-            from app.repositories.user_repository import UserRepository
-
-            db = SessionLocal()
-            try:
-                UserRepository.update_company(db, current_user.id, company_id)
-            finally:
-                db.close()
+    if not current_user.is_active:
+        raise HTTPException(status_code=403, detail="Inactive user")
 
     if company_id is None and current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="No company associated with user")

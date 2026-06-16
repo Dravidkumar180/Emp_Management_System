@@ -8,6 +8,7 @@ import Departments from '../pages/Departments';
 import Attendance from '../pages/Attendance';
 import Companies from '../pages/Companies';
 import Settings from '../pages/Settings';
+import Users from '../pages/Users';
 import RoleRequests from '../pages/RoleRequests';
  
 import PrivateRoute from '../components/common/PrivateRoute';
@@ -32,8 +33,9 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/employees" element={<Employees />} />
         <Route path="/departments" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Departments /></PrivateRoute>} />
-        <Route path="/attendance" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Attendance /></PrivateRoute>} />
-        <Route path="/companies" element={<PrivateRoute allowedRoles={['super_admin', 'admin', 'user']}><Companies /></PrivateRoute>} />
+        <Route path="/attendance" element={<PrivateRoute allowedRoles={['super_admin', 'admin', 'user']}><Attendance /></PrivateRoute>} />
+        <Route path="/companies" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Companies /></PrivateRoute>} />
+        <Route path="/users" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Users /></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute allowedRoles={['user']}><Settings /></PrivateRoute>} />
         <Route path="/role-requests" element={<PrivateRoute allowedRoles={['admin']}><RoleRequests /></PrivateRoute>} />
       </Route>
