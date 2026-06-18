@@ -23,6 +23,27 @@ const loadNotifications = (storageKey) => {
   }
 };
 
+const getUserNotificationStorageKey = (user) => {
+  if (!user?.email) return 'notifications';
+  return `notifications:${user.email}:${user.role || 'user'}:${user.companyId || user.company_id || 'company-a'}`;
+};
+
+export const createNotificationForUser = (user, { type = 'info', title = '', message = '', ...rest }) => {
+  const storageKey = getUserNotificationStorageKey(user);
+  const notifications = loadNotifications(storageKey);
+  const notification = {
+    id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    type,
+    title,
+    message,
+    time: new Date().toISOString(),
+    ...rest,
+  };
+
+  localStorage.setItem(storageKey, JSON.stringify([notification, ...notifications]));
+  return notification;
+};
+
 export const NotificationProvider = ({ children }) => {
   const [storageKey, setStorageKey] = useState(getNotificationStorageKey);
   const [notifications, setNotifications] = useState(() => loadNotifications(getNotificationStorageKey()));
@@ -42,9 +63,14 @@ export const NotificationProvider = ({ children }) => {
   }, [notifications, storageKey]);
 
   const addNotification = useCallback(({ type = 'info', title = '', message = '', ...rest }) => {
-    const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-    const time = new Date().toISOString();
-    const notif = { id, type, title, message, time, ...rest };
+    const notif = {
+      id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      type,
+      title,
+      message,
+      time: new Date().toISOString(),
+      ...rest,
+    };
     setNotifications((prev) => [notif, ...prev]);
   }, []);
 

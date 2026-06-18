@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, registerUser, getCurrentUser } from '../services/auth';
+import { recordLoginActivity, recordLogoutActivity, recordSignupActivity } from '../services/activityTracking';
+import { logAuditAction } from '../services/audit';
+import { createNotificationForUser, useNotifications } from './NotificationContext';
 
 const AuthContext = createContext();
 
@@ -46,6 +49,7 @@ const withCompany = (userData, fallbackEmail) => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { refreshNotificationScope } = useNotifications();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -74,6 +78,22 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', response.access_token);
         localStorage.setItem('user', JSON.stringify(userWithCompany));
         setUser(userWithCompany);
+        const activity = await recordLoginActivity(userWithCompany);
+        await logAuditAction({
+          action: 'User Login',
+          entityType: 'account',
+          entityId: userWithCompany.id,
+          entityName: userWithCompany.name || userWithCompany.email,
+          details: `${userWithCompany.name || userWithCompany.email} logged in`,
+          newValue: activity,
+        });
+        createNotificationForUser(userWithCompany, {
+          type: 'success',
+          title: 'Login Recorded',
+          message: `${userWithCompany.name || userWithCompany.email} logged in`,
+          category: 'account-activity',
+        });
+        refreshNotificationScope();
         return { success: true, user: userWithCompany };
       }
       return { success: false, error: 'Invalid credentials' };
@@ -88,7 +108,26 @@ export const AuthProvider = ({ children }) => {
       if (response && response.user) {
         saveUserCompany(email, companyId);
         // Auto login after registration
-        return await login(email, password);
+        const loginResult = await login(email, password, companyId);
+        if (loginResult.success) {
+          const signupActivity = await recordSignupActivity(loginResult.user);
+          await logAuditAction({
+            action: 'User Signup',
+            entityType: 'account',
+            entityId: loginResult.user.id,
+            entityName: loginResult.user.name || loginResult.user.email,
+            details: `${loginResult.user.name || loginResult.user.email} signed up as ${loginResult.user.role || role}`,
+            newValue: signupActivity,
+          });
+          createNotificationForUser(loginResult.user, {
+            type: 'success',
+            title: 'Signup Recorded',
+            message: `${loginResult.user.name || loginResult.user.email} signed up`,
+            category: 'account-activity',
+          });
+          refreshNotificationScope();
+        }
+        return loginResult;
       }
       return { success: false, error: 'Registration failed' };
     } catch (error) {
@@ -97,6 +136,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    const savedUser = user || JSON.parse(localStorage.getItem('user') || 'null');
+    const activity = recordLogoutActivity(savedUser);
+    logAuditAction({
+      action: 'User Logout',
+      entityType: 'account',
+      entityId: savedUser?.id,
+      entityName: savedUser?.name || savedUser?.email,
+      details: `${savedUser?.name || savedUser?.email || 'User'} logged out`,
+      newValue: activity,
+    });
+    createNotificationForUser(savedUser, {
+      type: 'info',
+      title: 'Logout Recorded',
+      message: `${savedUser?.name || savedUser?.email || 'User'} logged out`,
+      category: 'account-activity',
+    });
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

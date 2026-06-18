@@ -1,4 +1,5 @@
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+const LOCAL_AUDIT_LOGS_KEY = 'localAuditLogs';
 
 const getCompanyId = () => {
   try {
@@ -9,25 +10,82 @@ const getCompanyId = () => {
   }
 };
 
+const getCurrentUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const readLocalAuditLogs = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_AUDIT_LOGS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+const writeLocalAuditLogs = (logs) => {
+  localStorage.setItem(LOCAL_AUDIT_LOGS_KEY, JSON.stringify(logs));
+};
+
+const createLocalAuditLog = ({
+  action,
+  entityType,
+  entityId,
+  entityName,
+  details,
+  oldValue,
+  newValue
+}) => {
+  const user = getCurrentUser();
+  const entry = {
+    id: `local-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    action,
+    entity_type: entityType,
+    entity_id: Number.isInteger(entityId) ? entityId : null,
+    entity_name: entityName || null,
+    details: details || null,
+    old_value: oldValue ? JSON.stringify(oldValue) : null,
+    new_value: newValue ? JSON.stringify(newValue) : null,
+    user_name: user.name || user.email?.split('@')[0] || entityName || 'System',
+    user_email: user.email || null,
+    company_id: getCompanyId(),
+    created_at: new Date().toISOString(),
+    source: 'local',
+  };
+  const logs = readLocalAuditLogs();
+  writeLocalAuditLogs([entry, ...logs].slice(0, 500));
+  return entry;
+};
+
 export const fetchAuditLogs = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
-    return [];
+    return readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
   }
 
-  const response = await fetch(`${API_BASE_URL}/audit-logs`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'X-Company-Id': getCompanyId()
+  const localLogs = readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/audit-logs`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Company-Id': getCompanyId()
+      }
+    });
+
+    if (!response.ok) {
+      return localLogs;
     }
-  });
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch audit logs');
+    const data = await response.json();
+    const apiLogs = Array.isArray(data) ? data : [];
+    return [...localLogs, ...apiLogs].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  } catch {
+    return localLogs;
   }
-
-  const data = await response.json();
-  return Array.isArray(data) ? data : [];
 };
 
 export const logAuditAction = async ({
@@ -41,7 +99,15 @@ export const logAuditAction = async ({
 }) => {
   const token = localStorage.getItem('token');
   if (!token) {
-    return null;
+    return createLocalAuditLog({
+      action,
+      entityType,
+      entityId,
+      entityName,
+      details,
+      oldValue,
+      newValue
+    });
   }
 
   try {
@@ -64,12 +130,28 @@ export const logAuditAction = async ({
     });
 
     if (!response.ok) {
-      return null;
+      return createLocalAuditLog({
+        action,
+        entityType,
+        entityId,
+        entityName,
+        details,
+        oldValue,
+        newValue
+      });
     }
 
     return await response.json();
   } catch (error) {
     console.error('Audit log error:', error);
-    return null;
+    return createLocalAuditLog({
+      action,
+      entityType,
+      entityId,
+      entityName,
+      details,
+      oldValue,
+      newValue
+    });
   }
 };

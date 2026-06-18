@@ -13,6 +13,7 @@ import DepartmentTransfer from './pages/DepartmentTransfer';
 import Attendance from './pages/Attendance';
 import Companies from './pages/Companies';
 import AuditLogs from './pages/AuditLogs';
+import Tracking from './pages/Tracking';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
@@ -97,6 +98,14 @@ function App() {
             <Route path="/audit-logs" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <AuditLogs />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/tracking" element={
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+                <DashboardLayout>
+                  <Tracking />
+                </DashboardLayout>
               </ProtectedRoute>
             } />
 
