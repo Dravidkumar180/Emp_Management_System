@@ -1,18 +1,24 @@
+// Shows the attendance page.
 import React, { useEffect, useMemo, useState } from 'react';
 import { getAllEmployees } from '../services/api';
 import './Attendance.css';
 import { useNotifications } from '../context/NotificationContext';
 import { logAuditAction } from '../services/audit';
 import { useAuth } from '../context/AuthContext';
+import { formatHolidayDate, getHolidayForDate, refreshCompanyHolidays } from '../services/holidays';
 
 const ACCESS_REQUESTS_KEY = 'attendanceAccessRequests';
 const USER_ATTENDANCE_KEY = 'userAttendanceRecords';
 const LEAVE_REQUESTS_KEY = 'userLeaveRequests';
 
+// Prepares today key.
 const todayKey = () => new Date().toISOString().split('T')[0];
+// Helps with normalize company id.
 const normalizeCompanyId = (companyId) => companyId || 'company-a';
+// Helps with normalize email.
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
 
+// Reads data from storage.
 const readStorage = (key, fallback = []) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -21,10 +27,12 @@ const readStorage = (key, fallback = []) => {
   }
 };
 
+// Writes storage.
 const writeStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+// Helps with format date time.
 const formatDateTime = (value) => {
   if (!value) return '-';
   const date = new Date(value);
@@ -32,15 +40,19 @@ const formatDateTime = (value) => {
   return date.toLocaleString('sv-SE').replace('T', ' ');
 };
 
+// Prepares status label.
 const statusLabel = (record) => {
   if (!record) return 'Present';
   if (record.checkIn && !record.checkOut) return 'Checked In';
   return record.status || 'Present';
 };
 
+// Prepares status class.
 const statusClass = (status) => String(status || 'present').toLowerCase().replace(/\s+/g, '-');
+// Checks is currently checked in.
 const isCurrentlyCheckedIn = (record) => Boolean(record?.checkIn && !record?.checkOut);
 
+// Gets recent dates data.
 const getRecentDates = (count = 7) => {
   return Array.from({ length: count }, (_, index) => {
     const date = new Date();
@@ -49,6 +61,7 @@ const getRecentDates = (count = 7) => {
   });
 };
 
+// Shows the attendance component.
 const Attendance = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -61,6 +74,7 @@ const Attendance = () => {
   const [accessRequests, setAccessRequests] = useState([]);
   const [userAttendance, setUserAttendance] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [holidayVersion, setHolidayVersion] = useState(0);
   const [leaveForm, setLeaveForm] = useState({
     type: 'Vacation',
     startDate: '',
@@ -73,28 +87,52 @@ const Attendance = () => {
   const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const itemsPerPage = 8;
 
+  // Prepares current access request.
   const currentAccessRequest = useMemo(() => (
     accessRequests.find((request) => request.email === userEmail && request.companyId === companyId)
   ), [accessRequests, companyId, userEmail]);
 
+  // Prepares today attendance.
   const todayAttendance = useMemo(() => (
     userAttendance.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey())
   ), [companyId, userAttendance, userEmail]);
 
+  // Prepares today holiday.
+  const todayHoliday = useMemo(() => (
+    getHolidayForDate(companyId, todayKey())
+  ), [companyId, holidayVersion]);
+
+  // Prepares selected date holiday.
+  const selectedDateHoliday = useMemo(() => (
+    getHolidayForDate(companyId, selectedDate)
+  ), [companyId, holidayVersion, selectedDate]);
+
+  // Prepares my leave requests.
   const myLeaveRequests = useMemo(() => (
     leaveRequests.filter((request) => request.email === userEmail && request.companyId === companyId)
   ), [companyId, leaveRequests, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     setAccessRequests(readStorage(ACCESS_REQUESTS_KEY));
     setUserAttendance(readStorage(USER_ATTENDANCE_KEY));
     setLeaveRequests(readStorage(LEAVE_REQUESTS_KEY));
-  }, []);
+    refreshCompanyHolidays(companyId)
+      .then(() => setHolidayVersion((version) => version + 1))
+      .catch((error) => console.error('Holiday refresh failed:', error));
 
+    // Handles holiday update actions.
+    const handleHolidayUpdate = () => setHolidayVersion((version) => version + 1);
+    window.addEventListener('holidaysUpdated', handleHolidayUpdate);
+    return () => window.removeEventListener('holidaysUpdated', handleHolidayUpdate);
+  }, [companyId]);
+
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!isUser || !userEmail || !companyId) return;
 
     const requests = readStorage(ACCESS_REQUESTS_KEY);
+    // Prepares existing.
     const existing = requests.find((request) => request.email === userEmail && request.companyId === companyId);
     if (existing) {
       setAccessRequests(requests);
@@ -124,6 +162,7 @@ const Attendance = () => {
     });
   }, [companyId, isUser, user?.name, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (isUser) {
       setLoading(false);
@@ -131,23 +170,27 @@ const Attendance = () => {
     }
 
     loadAttendanceData();
-  }, [selectedDate, user?.role]);
+  }, [holidayVersion, selectedDate, user?.role]);
 
+  // Gets attendance data.
   const loadAttendanceData = async () => {
     try {
       setLoading(true);
       const employees = await getAllEmployees();
+      const holiday = getHolidayForDate(companyId, selectedDate);
+      // Prepares records.
       const records = employees.map(emp => ({
         id: emp.id,
         employee: emp.name,
         department: emp.department,
         date: selectedDate,
-        status: getRandomStatus(),
+        status: holiday ? 'Holiday' : getRandomStatus(),
         avatar: emp.avatar,
         email: emp.email,
-        checkIn: getRandomTime('09:00', '10:30'),
-        checkOut: getRandomTime('17:00', '18:30'),
-        hoursWorked: getRandomHours(),
+        checkIn: holiday ? null : getRandomTime('09:00', '10:30'),
+        checkOut: holiday ? null : getRandomTime('17:00', '18:30'),
+        hoursWorked: holiday ? null : getRandomHours(),
+        holidayName: holiday?.name || null,
       }));
 
       setAttendanceRecords(records);
@@ -159,11 +202,13 @@ const Attendance = () => {
     }
   };
 
+  // Gets random status data.
   const getRandomStatus = () => {
     const statuses = ['Active', 'Active', 'Active', 'On Leave', 'Inactive', 'Remote'];
     return statuses[Math.floor(Math.random() * statuses.length)];
   };
 
+  // Gets random time data.
   const getRandomTime = (min, max) => {
     const minTime = new Date(`2000-01-01 ${min}`).getTime();
     const maxTime = new Date(`2000-01-01 ${max}`).getTime();
@@ -171,12 +216,15 @@ const Attendance = () => {
     return randomTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Gets random hours data.
   const getRandomHours = () => {
     const hours = ['8.5', '8.0', '7.5', '9.0', '8.2'];
     return hours[Math.floor(Math.random() * hours.length)];
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Helps with filtered.
     const filtered = attendanceRecords.filter(record =>
       record.employee.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.department.toLowerCase().includes(searchTerm.toLowerCase())
@@ -192,13 +240,19 @@ const Attendance = () => {
   );
 
   const totalEmployees = attendanceRecords.length;
+  // Prepares present count.
   const presentCount = attendanceRecords.filter(r => r.status === 'Active').length;
+  // Handles leave count actions.
   const onLeaveCount = attendanceRecords.filter(r => r.status === 'On Leave').length;
+  // Prepares inactive count.
   const inactiveCount = attendanceRecords.filter(r => r.status === 'Inactive').length;
+  // Prepares remote count.
   const remoteCount = attendanceRecords.filter(r => r.status === 'Remote').length;
 
+  // Helps with format submitted at.
   const formatSubmittedAt = (value) => formatDateTime(value || new Date().toISOString());
 
+  // Handles date change actions.
   const handleDateChange = async (e) => {
     const nextDate = e.target.value;
     setSelectedDate(nextDate);
@@ -213,14 +267,21 @@ const Attendance = () => {
     });
   };
 
+  // Saves user attendance data.
   const saveUserAttendance = (records) => {
     writeStorage(USER_ATTENDANCE_KEY, records);
     setUserAttendance(records);
   };
 
+  // Handles check in actions.
   const handleCheckIn = async () => {
+    if (todayHoliday) {
+      addNotification({ type: 'info', title: 'Holiday', message: `${todayHoliday.name} is a holiday. Check-in is not required.` });
+      return;
+    }
     const records = readStorage(USER_ATTENDANCE_KEY);
     const now = new Date().toISOString();
+    // Prepares existing.
     const existing = records.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey());
     if (isCurrentlyCheckedIn(existing)) return;
 
@@ -253,9 +314,15 @@ const Attendance = () => {
     });
   };
 
+  // Handles check out actions.
   const handleCheckOut = async () => {
+    if (todayHoliday) {
+      addNotification({ type: 'info', title: 'Holiday', message: `${todayHoliday.name} is a holiday. Check-out is not required.` });
+      return;
+    }
     const records = readStorage(USER_ATTENDANCE_KEY);
     const now = new Date().toISOString();
+    // Prepares existing.
     const existing = records.find((record) => record.email === userEmail && record.companyId === companyId && record.date === todayKey());
     if (!isCurrentlyCheckedIn(existing)) return;
 
@@ -267,6 +334,7 @@ const Attendance = () => {
       lastCheckOut: now,
       sessions: [...(existing.sessions || []), completedSession],
     };
+    // Prepares next records.
     const nextRecords = records.map((record) => record.id === existing.id ? nextRecord : record);
     saveUserAttendance(nextRecords);
     addNotification({ type: 'success', title: 'Checked Out', message: `Checked out at ${formatDateTime(now)}` });
@@ -281,6 +349,7 @@ const Attendance = () => {
     });
   };
 
+  // Handles leave submit actions.
   const handleLeaveSubmit = async (e) => {
     e.preventDefault();
     if (!leaveForm.startDate || !leaveForm.endDate) {
@@ -315,8 +384,10 @@ const Attendance = () => {
     });
   };
 
+  // Coordinates download report behavior.
   const downloadReport = () => {
     try {
+      // Prepares rows.
       const rows = filteredRecords.map(r => ({
         Employee: r.employee,
         Department: r.department,
@@ -362,6 +433,7 @@ const Attendance = () => {
     }
   };
 
+  // Coordinates render user attendance behavior.
   const renderUserAttendance = () => {
     if (currentAccessRequest?.status !== 'approved') {
       return (
@@ -384,7 +456,20 @@ const Attendance = () => {
       );
     }
 
+    // Prepares recent attendance.
     const recentAttendance = getRecentDates().map((date, index) => {
+      const holiday = getHolidayForDate(companyId, date);
+      if (holiday) {
+        return {
+          id: `${userEmail}-${date}-holiday`,
+          date,
+          status: 'Holiday',
+          holidayName: holiday.name,
+          checkIn: null,
+          checkOut: null,
+        };
+      }
+      // Prepares record.
       const record = userAttendance.find((item) => item.email === userEmail && item.companyId === companyId && item.date === date);
       if (record) return record;
       const fallbackStatuses = ['Present', 'Absent', 'Present', 'Present', 'Late', 'Present'];
@@ -396,7 +481,7 @@ const Attendance = () => {
         checkOut: null,
       };
     });
-    const checkedInNow = isCurrentlyCheckedIn(todayAttendance);
+    const checkedInNow = !todayHoliday && isCurrentlyCheckedIn(todayAttendance);
 
     return (
       <div className="attendance-page attendance-user-page">
@@ -414,18 +499,27 @@ const Attendance = () => {
                 <p>{user?.name || userEmail.split('@')[0]} - {todayAttendance?.department || 'General Department'}</p>
               </div>
             </div>
-            <span className={`wide-status status-${statusClass(statusLabel(todayAttendance))}`}>{statusLabel(todayAttendance)}</span>
+            <span className={`wide-status status-${statusClass(todayHoliday ? 'Holiday' : statusLabel(todayAttendance))}`}>
+              {todayHoliday ? 'Holiday' : statusLabel(todayAttendance)}
+            </span>
+            {todayHoliday && (
+              <div className="holiday-attendance-banner">
+                <strong>It's a Holiday!</strong>
+                <span>{todayHoliday.name} - {todayHoliday.type}</span>
+                <p>Check-in and check-out are not required. Working hours are not calculated for {formatHolidayDate(todayKey())}.</p>
+              </div>
+            )}
             <p className="check-time">
-              {checkedInNow ? `Checked in ${formatDateTime(todayAttendance.checkIn)}` : 'Not checked in'}
+              {todayHoliday ? 'Attendance marked as Holiday' : checkedInNow ? `Checked in ${formatDateTime(todayAttendance.checkIn)}` : 'Not checked in'}
             </p>
             {!checkedInNow && todayAttendance?.lastCheckOut && (
               <p className="check-time">Last checked out {formatDateTime(todayAttendance.lastCheckOut)}</p>
             )}
             <div className="attendance-actions">
-              <button className="check-btn check-in-btn" onClick={handleCheckIn} disabled={checkedInNow}>
+              <button className="check-btn check-in-btn" onClick={handleCheckIn} disabled={Boolean(todayHoliday) || checkedInNow}>
                 {'-> Check In'}
               </button>
-              <button className="check-btn check-out-btn" onClick={handleCheckOut} disabled={!checkedInNow}>
+              <button className="check-btn check-out-btn" onClick={handleCheckOut} disabled={Boolean(todayHoliday) || !checkedInNow}>
                 {'<- Check Out'}
               </button>
             </div>
@@ -524,6 +618,14 @@ const Attendance = () => {
         <p>Track daily attendance records by employee.</p>
       </div>
 
+      {selectedDateHoliday && (
+        <div className="holiday-attendance-banner admin-holiday-banner">
+          <strong>{formatHolidayDate(selectedDate)} is a holiday: {selectedDateHoliday.name}</strong>
+          <span>{selectedDateHoliday.type}{selectedDateHoliday.recurring ? ' - Recurring annually' : ''}</span>
+          <p>Employees are not required to check in/out, no absent status is applied, and working hours are not calculated.</p>
+        </div>
+      )}
+
       <div className="attendance-filters">
         <div className="search-box">
           <input
@@ -574,7 +676,7 @@ const Attendance = () => {
                   <td>{record.date}</td>
                   <td>
                     <span className={`attendance-status status-${record.status.toLowerCase().replace(' ', '-')}`}>
-                      {record.status}
+                      {record.status}{record.holidayName ? ` - ${record.holidayName}` : ''}
                     </span>
                   </td>
                   <td>{record.status === 'Active' ? record.checkIn : '-'}</td>

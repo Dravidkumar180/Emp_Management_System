@@ -1,6 +1,8 @@
+// Connects the frontend to audit API features.
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 const LOCAL_AUDIT_LOGS_KEY = 'localAuditLogs';
 
+// Gets company id data.
 const getCompanyId = () => {
   try {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -10,6 +12,7 @@ const getCompanyId = () => {
   }
 };
 
+// Gets current user data.
 const getCurrentUser = () => {
   try {
     return JSON.parse(localStorage.getItem('user') || '{}');
@@ -18,6 +21,7 @@ const getCurrentUser = () => {
   }
 };
 
+// Reads local audit logs data from storage.
 const readLocalAuditLogs = () => {
   try {
     return JSON.parse(localStorage.getItem(LOCAL_AUDIT_LOGS_KEY) || '[]');
@@ -26,6 +30,7 @@ const readLocalAuditLogs = () => {
   }
 };
 
+// Writes local audit logs.
 const writeLocalAuditLogs = (logs) => {
   localStorage.setItem(LOCAL_AUDIT_LOGS_KEY, JSON.stringify(logs));
 };
@@ -60,12 +65,14 @@ const createLocalAuditLog = ({
   return entry;
 };
 
+// Gets audit logs data.
 export const fetchAuditLogs = async () => {
   const token = localStorage.getItem('token');
   if (!token) {
     return readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
   }
 
+  // Prepares local logs.
   const localLogs = readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
 
   try {

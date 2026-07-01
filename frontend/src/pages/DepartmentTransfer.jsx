@@ -1,3 +1,4 @@
+// Shows the department transfer page.
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getAllEmployees, updateEmployee } from '../services/api';
@@ -32,6 +33,7 @@ const DEPARTMENT_PERMISSIONS = {
   Data: ['warehouse', 'dashboards', 'exports']
 };
 
+// Reads json data from storage.
 const readJson = (key, fallback) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -40,6 +42,7 @@ const readJson = (key, fallback) => {
   }
 };
 
+// Writes employee notification.
 const writeEmployeeNotification = (employee, transfer) => {
   if (!employee?.email) return;
 
@@ -57,6 +60,7 @@ const writeEmployeeNotification = (employee, transfer) => {
   localStorage.setItem(storageKey, JSON.stringify([nextNotification, ...notifications]));
 };
 
+// Helps with format date time.
 const formatDateTime = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -69,6 +73,7 @@ const formatDateTime = (value) => {
   });
 };
 
+// Shows the department transfer component.
 const DepartmentTransfer = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -88,11 +93,14 @@ const DepartmentTransfer = () => {
 
   const currentCompanyId = user?.companyId || user?.company_id || 'company-a';
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Gets page data.
     const loadPageData = async () => {
       try {
         setLoading(true);
         const allEmployees = await getAllEmployees();
+        // Prepares company employees.
         const companyEmployees = allEmployees.filter((employee) => (
           (employee.companyId || employee.company_id || 'company-a') === currentCompanyId
         ));
@@ -112,6 +120,7 @@ const DepartmentTransfer = () => {
     loadPageData();
   }, [currentCompanyId]);
 
+  // Prepares departments.
   const departments = useMemo(() => {
     const savedDepartments = readJson('departments', []);
     return [...new Set([
@@ -121,19 +130,24 @@ const DepartmentTransfer = () => {
     ].filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }, [employees]);
 
+  // Prepares selected employee.
   const selectedEmployee = employees.find((employee) => String(employee.id) === selectedEmployeeId);
+  // Prepares transfer targets.
   const transferTargets = departments.filter((department) => department !== currentDepartment);
   const visibleTransfers = showAll ? transfers : transfers.slice(0, 1);
+  // Prepares history departments.
   const historyDepartments = useMemo(() => {
     return [...new Set(
       transfers.flatMap((transfer) => [transfer.fromDepartment, transfer.toDepartment]).filter(Boolean)
     )].sort((a, b) => a.localeCompare(b));
   }, [transfers]);
+  // Prepares history statuses.
   const historyStatuses = useMemo(() => {
     return [...new Set(transfers.map((transfer) => transfer.status || 'Completed'))]
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
   }, [transfers]);
+  // Helps with filtered history transfers.
   const filteredHistoryTransfers = useMemo(() => {
     return transfers.filter((transfer) => {
       const status = transfer.status || 'Completed';
@@ -151,10 +165,12 @@ const DepartmentTransfer = () => {
     selectedEmployee && currentDepartment && toDepartment && effectiveDate && reason.trim() && transferTargets.length
   );
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     setCurrentDepartment(selectedEmployee?.department || departments[0] || '');
   }, [departments, selectedEmployee]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!toDepartment && transferTargets.length > 0) {
       setToDepartment(transferTargets[0]);
@@ -164,6 +180,7 @@ const DepartmentTransfer = () => {
     }
   }, [toDepartment, transferTargets]);
 
+  // Helps with reset form.
   const resetForm = () => {
     setCurrentDepartment(selectedEmployee?.department || departments[0] || '');
     setToDepartment(transferTargets[0] || '');
@@ -171,6 +188,7 @@ const DepartmentTransfer = () => {
     setReason('');
   };
 
+  // Handles transfer actions.
   const handleTransfer = async (event) => {
     event.preventDefault();
 

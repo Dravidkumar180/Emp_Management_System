@@ -1,3 +1,4 @@
+/* Styles the settings page. */
 /* Settings Page Container */
 .settings-page {
   max-width: 1200px;
@@ -159,6 +160,7 @@
 }
 
 .reactivation-approval-row,
+.reinstatement-approval-row,
 .leave-approval-row {
   border: 1px solid #e5e7eb;
   border-radius: 8px;

@@ -1,3 +1,4 @@
+// Shows the tracking page.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ensureLegacyAccountHistory } from '../services/activityTracking';
@@ -8,12 +9,14 @@ const COMPANIES = [
   { id: 'company-b', name: 'Company B' },
 ];
 
+// Helps with normalize company id.
 const normalizeCompanyId = (companyId) => {
   if (companyId === 1 || companyId === '1') return 'company-a';
   if (companyId === 2 || companyId === '2') return 'company-b';
   return companyId || 'company-a';
 };
 
+// Helps with format date time.
 const formatDateTime = (value) => {
   if (!value) return 'Not recorded';
 
@@ -26,22 +29,29 @@ const formatDateTime = (value) => {
   }).format(new Date(value));
 };
 
+// Gets initial data.
 const getInitial = (name, email) => (name || email || 'U').charAt(0).toUpperCase();
 
+// Checks has changed value.
 const hasChangedValue = (history = [], field) => {
+  // Prepares values.
   const values = new Set(history.map((item) => item[field]).filter(Boolean));
   return values.size > 1;
 };
 
+// Gets role label data.
 const getRoleLabel = (role) => {
   if (role === 'admin') return 'Admin';
   if (role === 'super_admin') return 'Super Admin';
   return 'User';
 };
 
+// Helps with normalize history.
 const normalizeHistory = (record) => {
   const history = Array.isArray(record.history) ? [...record.history] : [];
+  // Checks has login.
   const hasLogin = history.some((item) => item.type === 'login' && item.timestamp === record.lastLogin);
+  // Checks has logout.
   const hasLogout = history.some((item) => item.type === 'logout' && item.timestamp === record.lastLogout);
 
   if (record.lastLogin && !hasLogin) {
@@ -65,6 +75,7 @@ const normalizeHistory = (record) => {
   return history.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 };
 
+// Shows the tracking component.
 const Tracking = () => {
   const { user } = useAuth();
   const userCompanyId = normalizeCompanyId(user?.companyId || user?.company_id);
@@ -75,7 +86,9 @@ const Tracking = () => {
   const [activityTab, setActivityTab] = useState('activity');
   const [loading, setLoading] = useState(true);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Gets activity data.
     const loadActivity = () => {
       setLoading(true);
       setRecords(ensureLegacyAccountHistory());
@@ -85,22 +98,28 @@ const Tracking = () => {
     loadActivity();
   }, []);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!canSwitchCompany) {
       setActiveCompanyId(userCompanyId);
     }
   }, [canSwitchCompany, userCompanyId]);
 
+  // Prepares company options.
   const companyOptions = canSwitchCompany ? COMPANIES : COMPANIES.filter((company) => company.id === userCompanyId);
+  // Prepares active company.
   const activeCompany = COMPANIES.find((company) => company.id === activeCompanyId) || COMPANIES[0];
 
+  // Prepares company records.
   const companyRecords = useMemo(() => (
     records
       .filter((record) => record.source === 'account' || !record.department)
       .filter((record) => normalizeCompanyId(record.companyId) === activeCompanyId)
       .map((record) => {
         const history = normalizeHistory(record);
+        // Prepares login events.
         const loginEvents = history.filter((item) => item.type === 'login');
+        // Prepares logout events.
         const logoutEvents = history.filter((item) => item.type === 'logout');
         return {
           ...record,
@@ -120,19 +139,23 @@ const Tracking = () => {
       .sort((a, b) => new Date(b.lastLogin || 0) - new Date(a.lastLogin || 0))
   ), [activeCompanyId, records, searchTerm]);
 
+  // Prepares login history.
   const loginHistory = companyRecords.flatMap((record) => (
     (record.history || [])
       .filter((item) => item.type === 'login')
       .map((item) => ({ ...item, name: record.name, email: record.email, role: record.role, companyName: record.companyName || activeCompany.name }))
   )).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
+  // Prepares logout history.
   const logoutHistory = companyRecords.flatMap((record) => (
     (record.history || [])
       .filter((item) => item.type === 'logout')
       .map((item) => ({ ...item, name: record.name, email: record.email, role: record.role, companyName: record.companyName || activeCompany.name }))
   )).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
+  // Prepares new device count.
   const newDeviceCount = companyRecords.filter((record) => hasChangedValue(record.history, 'browser')).length;
+  // Prepares new IP count.
   const newIpCount = companyRecords.filter((record) => hasChangedValue(record.history, 'ipAddress')).length;
 
   const summary = [

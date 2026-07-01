@@ -1,3 +1,4 @@
+// Reusable input component.
 import React from 'react';
 import './Input.css';
 

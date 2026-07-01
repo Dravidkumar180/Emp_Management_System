@@ -1,7 +1,9 @@
+"""Shared backend helper functions."""
 from fastapi import Request
 from app.services.audit_log_service import AuditLogService
 from app.database.database import SessionLocal
 
+# Helps with log action.
 def log_action(
     user_id: int,
     user_name: str,

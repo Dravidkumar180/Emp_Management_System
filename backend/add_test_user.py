@@ -1,6 +1,9 @@
+"""Seed a local development admin user into the SQLite database."""
 import sqlite3
 
 def add_test_user():
+    """Create the users table if needed and insert the default admin account."""
+    # Open the local SQLite database used by the development backend.
     conn = sqlite3.connect('employees.db')
     cursor = conn.cursor()
     
@@ -23,6 +26,7 @@ def add_test_user():
     
     if existing:
         print("✅ User already exists!")
+        # Report the existing account so the script is safe to rerun.
         cursor.execute("SELECT id, name, email, role FROM users WHERE email = 'dravid180@gmail.com'")
         user = cursor.fetchone()
         print(f"   ID: {user[0]}, Name: {user[1]}, Email: {user[2]}, Role: {user[3]}")
@@ -45,7 +49,9 @@ def add_test_user():
     for user in users:
         print(f"   ID: {user[0]}, Name: {user[1]}, Email: {user[2]}, Role: {user[3]}")
     
+    # Close the connection after all seed and reporting work is complete.
     conn.close()
 
 if __name__ == "__main__":
+    # Run the seed helper when this file is executed directly.
     add_test_user()

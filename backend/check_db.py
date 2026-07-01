@@ -1,3 +1,4 @@
+"""Inspect the local SQLite database and print a quick employee summary."""
 import sqlite3
 import os
 
@@ -9,7 +10,7 @@ if os.path.exists(db_path):
 else:
     print(f"❌ Database file not found: {db_path}")
 
-# Connect and query
+# Connect to the database and create a cursor for read-only inspection queries.
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
@@ -30,4 +31,5 @@ print("\n📋 First 5 employees:")
 for emp in employees:
     print(f"   ID: {emp[0]}, Name: {emp[1]}, Dept: {emp[3]}, Status: {emp[4]}")
 
+# Close the database connection after printing the diagnostic output.
 conn.close()

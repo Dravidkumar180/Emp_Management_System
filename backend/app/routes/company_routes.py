@@ -1,3 +1,4 @@
+"""Defines API routes for company."""
 from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ router = APIRouter()
 # ========== SUPER ADMIN ENDPOINTS ==========
 
 @router.get("/companies", response_model=List[CompanyResponse])
+# Gets all companies data.
 async def get_all_companies(current_user: User = Depends(get_super_admin)):
     """
     Get all companies in the system
@@ -25,6 +27,7 @@ async def get_all_companies(current_user: User = Depends(get_super_admin)):
 
 
 @router.get("/companies/{company_id}")
+# Gets company by id data.
 async def get_company_by_id(
     company_id: int,
     current_user: User = Depends(get_super_admin)
@@ -62,6 +65,7 @@ async def get_company_by_id(
 
 
 @router.get("/companies/{company_id}/stats")
+# Gets company stats by id data.
 async def get_company_stats_by_id(
     company_id: int,
     current_user: User = Depends(get_super_admin)
@@ -83,6 +87,7 @@ async def get_company_stats_by_id(
 
 
 @router.post("/companies", response_model=CompanyResponse)
+# Creates company data.
 async def create_company(
     company: CompanyCreate,
     request: Request,
@@ -111,6 +116,7 @@ async def create_company(
 
 
 @router.put("/companies/{company_id}", response_model=CompanyResponse)
+# Updates company data.
 async def update_company(
     company_id: int,
     company: CompanyUpdate,
@@ -159,6 +165,7 @@ async def update_company(
 
 
 @router.delete("/companies/{company_id}")
+# Deletes company data.
 async def delete_company(
     company_id: int,
     request: Request,
@@ -195,6 +202,7 @@ async def delete_company(
 
 
 @router.post("/companies/{company_id}/activate")
+# Runs activate company.
 async def activate_company(
     company_id: int,
     request: Request,
@@ -229,6 +237,7 @@ async def activate_company(
 
 
 @router.post("/companies/{company_id}/deactivate")
+# Runs deactivate company.
 async def deactivate_company(
     company_id: int,
     request: Request,
@@ -265,6 +274,7 @@ async def deactivate_company(
 # ========== AUTHENTICATED USER ENDPOINTS ==========
 
 @router.get("/companies/my-company")
+# Gets my company data.
 async def get_my_company(current_user: User = Depends(get_current_active_user)):
     """
     Get current user's company
@@ -291,6 +301,7 @@ async def get_my_company(current_user: User = Depends(get_current_active_user)):
 
 
 @router.get("/companies/stats")
+# Gets company stats data.
 async def get_company_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get statistics for current user's company
@@ -309,6 +320,7 @@ async def get_company_stats(current_user: User = Depends(get_current_active_user
 
 
 @router.post("/companies/switch/{company_id}")
+# Runs switch company.
 async def switch_company(
     company_id: int,
     current_user: User = Depends(get_current_active_user)
@@ -352,6 +364,7 @@ async def switch_company(
 
 
 @router.get("/companies/available")
+# Gets available companies data.
 async def get_available_companies(current_user: User = Depends(get_current_active_user)):
     """
     Get all companies user can switch to

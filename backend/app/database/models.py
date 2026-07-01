@@ -1,8 +1,10 @@
+"""Defines the database tables used by the app."""
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
 from datetime import datetime
 from app.database.database import Base
 
 
+# Defines the company class.
 class Company(Base):
     """Company Model for Multi-Tenancy"""
     __tablename__ = "companies"
@@ -20,6 +22,7 @@ class Company(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the employee class.
 class Employee(Base):
     """Employee Model"""
     __tablename__ = "employees"
@@ -42,6 +45,24 @@ class Employee(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the holiday class.
+class Holiday(Base):
+    """Company-scoped holiday calendar model"""
+    __tablename__ = "holidays"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    date = Column(String(20), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    holiday_type = Column(String(50), nullable=False)
+    recurring = Column(Boolean, default=False)
+    status = Column(String(20), default="Active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# Defines the department class.
 class Department(Base):
     """Department Model"""
     __tablename__ = "departments"
@@ -54,6 +75,7 @@ class Department(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the user class.
 class User(Base):
     """User Model for Authentication"""
     __tablename__ = "users"
@@ -65,6 +87,11 @@ class User(Base):
     password = Column(String(255), nullable=False)
     role = Column(String(20), default="user")  # super_admin, admin, user
     is_active = Column(Boolean, default=True)
+    is_suspended = Column(Boolean, default=False)
+    suspension_reason = Column(Text, nullable=True)
+    suspended_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    suspended_by_name = Column(String(100), nullable=True)
+    suspended_at = Column(DateTime, nullable=True)
     deactivated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     deactivated_by_name = Column(String(100), nullable=True)
     deactivated_at = Column(DateTime, nullable=True)
@@ -72,6 +99,7 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the user invitation class.
 class UserInvitation(Base):
     """Company-scoped user invitation"""
     __tablename__ = "user_invitations"
@@ -91,6 +119,7 @@ class UserInvitation(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the role change request class.
 class RoleChangeRequest(Base):
     """Role Change Request Model"""
     __tablename__ = "role_change_requests"
@@ -110,6 +139,7 @@ class RoleChangeRequest(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the reactivation request class.
 class ReactivationRequest(Base):
     """Reactivation Request Model"""
     __tablename__ = "reactivation_requests"
@@ -131,7 +161,31 @@ class ReactivationRequest(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the reinstatement request class.
+class ReinstatementRequest(Base):
+    """Suspension reinstatement request model"""
+    __tablename__ = "reinstatement_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    requester_email = Column(String(100), nullable=False)
+    requester_name = Column(String(100), nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
+    suspended_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    suspended_by_name = Column(String(100), nullable=True)
+    message = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")  # pending, approved, rejected
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewer_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# Defines the audit log class.
 class AuditLog(Base):
+    """Groups audit log helper functions."""
     __tablename__ = "audit_logs"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -151,6 +205,7 @@ class AuditLog(Base):
     new_value = Column(Text, nullable=True)
 
 
+# Defines the notification class.
 class Notification(Base):
     """Notification Model for Real-time Alerts"""
     __tablename__ = "notifications"
@@ -169,6 +224,7 @@ class Notification(Base):
 
 # Helper function to get all table names (for debugging)
 def get_all_tables():
+    """Returns all tables data."""
     return [
         "companies",
         "employees", 
@@ -177,6 +233,7 @@ def get_all_tables():
         "user_invitations",
         "role_change_requests",
         "reactivation_requests",
+        "reinstatement_requests",
         "audit_logs",
         "notifications"
     ]

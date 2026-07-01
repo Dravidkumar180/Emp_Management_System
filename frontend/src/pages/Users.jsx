@@ -1,6 +1,8 @@
+// Shows the users page.
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { createNotificationForUser, useNotifications } from '../context/NotificationContext';
 import {
   createUserInvitation,
   deactivateMember,
@@ -8,15 +10,21 @@ import {
   fetchUserInvitations,
   getInvitationUrl,
   revokeUserInvitation,
+  suspendMember,
 } from '../services/userInvitations';
+import {
+  fetchReinstatementRequests,
+} from '../services/auth';
 import './Users.css';
 
+// Prepares company name from ID.
 const companyNameFromId = (companyId) => {
   if (companyId === 1 || companyId === '1' || companyId === 'company-a') return 'Company A';
   if (companyId === 2 || companyId === '2' || companyId === 'company-b') return 'Company B';
   return 'your company';
 };
 
+// Helps with copy text.
 const copyText = async (text) => {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
@@ -33,29 +41,69 @@ const copyText = async (text) => {
   document.body.removeChild(input);
 };
 
+// Helps with format history date.
+const formatHistoryDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString();
+};
+
+// Shows the users component.
 const Users = () => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('user');
   const [expiresDays, setExpiresDays] = useState(7);
   const [invitations, setInvitations] = useState([]);
   const [members, setMembers] = useState([]);
+  const [reinstatementRequests, setReinstatementRequests] = useState([]);
+  const [reinstatementFilter, setReinstatementFilter] = useState('pending');
+  const [suspensionReasons, setSuspensionReasons] = useState({});
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
+  // Prepares company name.
   const companyName = useMemo(() => companyNameFromId(user?.companyId || user?.company_id), [user]);
+  // Prepares pending invitations.
   const pendingInvitations = invitations.filter((invite) => invite.status === 'pending');
+  // Prepares active members.
+  const activeMembers = members.filter((member) => member.is_active && !member.is_suspended);
+  // Prepares suspended members.
+  const suspendedMembers = members.filter((member) => member.is_suspended);
+  // Prepares deactivated members.
+  const deactivatedMembers = members.filter((member) => !member.is_active);
+  // Prepares pending reinstatement requests.
+  const pendingReinstatementRequests = reinstatementRequests.filter((request) => request.status === 'pending');
+  const reinstatementCounts = {
+    pending: reinstatementRequests.filter((request) => request.status === 'pending').length,
+    approved: reinstatementRequests.filter((request) => request.status === 'approved').length,
+    rejected: reinstatementRequests.filter((request) => request.status === 'rejected').length,
+  };
+  const visibleReinstatementRequests = reinstatementFilter === 'all'
+    ? reinstatementRequests
+    : reinstatementRequests.filter((request) => request.status === reinstatementFilter);
+  // Prepares member by ID.
+  const memberById = useMemo(() => {
+    const lookup = new Map();
+    members.forEach((member) => lookup.set(member.id, member));
+    return lookup;
+  }, [members]);
 
+  // Gets users data.
   const loadUsersData = async () => {
     try {
       setLoading(true);
-      const [inviteData, memberData] = await Promise.all([
+      const [inviteData, memberData, reinstatementData] = await Promise.all([
         fetchUserInvitations(),
         fetchMembers(),
+        fetchReinstatementRequests(),
       ]);
       setInvitations(inviteData);
       setMembers(memberData);
+      setReinstatementRequests(reinstatementData);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Unable to load users');
     } finally {
@@ -63,10 +111,12 @@ const Users = () => {
     }
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadUsersData();
   }, []);
 
+  // Handles create invite actions.
   const handleCreateInvite = async (event) => {
     event.preventDefault();
     if (!email.trim()) {
@@ -91,6 +141,7 @@ const Users = () => {
     }
   };
 
+  // Handles copy invite actions.
   const handleCopyInvite = async (token) => {
     try {
       await copyText(getInvitationUrl(token));
@@ -100,6 +151,7 @@ const Users = () => {
     }
   };
 
+  // Handles revoke actions.
   const handleRevoke = async (invitationId) => {
     try {
       setBusyId(`invite-${invitationId}`);
@@ -112,6 +164,7 @@ const Users = () => {
     }
   };
 
+  // Handles deactivate actions.
   const handleDeactivate = async (memberId) => {
     try {
       setBusyId(`member-${memberId}`);
@@ -119,6 +172,37 @@ const Users = () => {
       await loadUsersData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Unable to deactivate member');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Handles suspend actions.
+  const handleSuspend = async (memberId) => {
+    const reason = suspensionReasons[memberId]?.trim() || 'No reason provided';
+    // Prepares member.
+    const member = members.find((item) => item.id === memberId);
+
+    try {
+      setBusyId(`suspend-${memberId}`);
+      const suspendedMember = await suspendMember(memberId, reason);
+      const notificationMember = suspendedMember || member;
+      addNotification({
+        type: 'warning',
+        title: 'Account Suspended',
+        message: `${notificationMember?.name || notificationMember?.email || 'Member'} was suspended.`,
+      });
+      if (notificationMember?.email) {
+        createNotificationForUser(notificationMember, {
+          type: 'warning',
+          title: 'Account Suspended',
+          message: `Your account was suspended. Reason: ${reason}`,
+        });
+      }
+      setSuspensionReasons((current) => ({ ...current, [memberId]: '' }));
+      await loadUsersData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Unable to suspend member');
     } finally {
       setBusyId(null);
     }
@@ -138,8 +222,31 @@ const Users = () => {
   return (
     <div className="users-page">
       <div className="users-header">
-        <h1>Users</h1>
-        <p>Manage members and invite links for <strong>{companyName}</strong>.</p>
+        <h1>Suspension Management</h1>
+        <p>Manage members, suspend company users or admins, and review reinstatement requests for <strong>{companyName}</strong>.</p>
+      </div>
+
+      <div className="suspension-stats">
+        <div className="suspension-stat">
+          <span>Active Users</span>
+          <strong>{activeMembers.length}</strong>
+          <small>{activeMembers.length === 1 ? '1 active account' : `${activeMembers.length} active accounts`}</small>
+        </div>
+        <div className="suspension-stat warning">
+          <span>Suspended Users</span>
+          <strong>{suspendedMembers.length}</strong>
+          <small>{suspendedMembers.length === 0 ? 'No suspensions' : 'Access blocked after login'}</small>
+        </div>
+        <div className="suspension-stat muted">
+          <span>Deactivated Users</span>
+          <strong>{deactivatedMembers.length}</strong>
+          <small>Login blocked</small>
+        </div>
+        <div className="suspension-stat info">
+          <span>Reinstatement Requests</span>
+          <strong>{pendingReinstatementRequests.length}</strong>
+          <small>{pendingReinstatementRequests.length === 0 ? 'No pending review' : 'Pending review'}</small>
+        </div>
       </div>
 
       <div className="users-top-grid">
@@ -239,13 +346,14 @@ const Users = () => {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Suspension Reason</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="empty-table-cell">No members found</td>
+                  <td colSpan="6" className="empty-table-cell">No members found</td>
                 </tr>
               ) : (
                 members.map((member) => (
@@ -254,22 +362,174 @@ const Users = () => {
                     <td>{member.email}</td>
                     <td>{member.role}</td>
                     <td>
-                      <span className={`member-status ${member.is_active ? 'active' : 'inactive'}`}>
-                        {member.is_active ? 'Active' : 'Inactive'}
+                      <span className={`member-status ${member.is_suspended ? 'suspended' : member.is_active ? 'active' : 'inactive'}`}>
+                        {member.is_suspended ? 'Suspended' : member.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="danger-action"
-                        onClick={() => handleDeactivate(member.id)}
-                        disabled={!member.is_active || member.id === user?.id || busyId === `member-${member.id}`}
-                      >
-                        Deactivate
-                      </button>
+                      {member.is_suspended ? (
+                        <span className="suspension-reason-text">{member.suspension_reason || 'No reason provided'}</span>
+                      ) : (
+                        <input
+                          className="suspension-reason-input"
+                          value={suspensionReasons[member.id] || ''}
+                          onChange={(event) => setSuspensionReasons((current) => ({
+                            ...current,
+                            [member.id]: event.target.value,
+                          }))}
+                          placeholder="Reason for suspension"
+                          disabled={!member.is_active || member.id === user?.id}
+                        />
+                      )}
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        {member.is_suspended ? (
+                          <button
+                            className="danger-action"
+                            disabled
+                          >
+                            Suspend
+                          </button>
+                        ) : (
+                          <button
+                            className="danger-action"
+                            onClick={() => handleSuspend(member.id)}
+                            disabled={!member.is_active || member.id === user?.id || busyId === `suspend-${member.id}`}
+                          >
+                            Suspend
+                          </button>
+                        )}
+                        <button
+                          className="danger-action"
+                          onClick={() => handleDeactivate(member.id)}
+                          disabled={!member.is_active || member.id === user?.id || busyId === `member-${member.id}`}
+                        >
+                          Deactivate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="users-card reinstatement-card">
+        <div className="users-section-heading">
+          <h2>Reinstatement History</h2>
+          <p>Review reinstatement request status for suspended users.</p>
+        </div>
+        <div className="reinstatement-history-tabs" role="tablist" aria-label="Reinstatement history filters">
+          <button
+            type="button"
+            className={reinstatementFilter === 'pending' ? 'active' : ''}
+            onClick={() => setReinstatementFilter('pending')}
+          >
+            Pending ({reinstatementCounts.pending})
+          </button>
+          <button
+            type="button"
+            className={reinstatementFilter === 'approved' ? 'active' : ''}
+            onClick={() => setReinstatementFilter('approved')}
+          >
+            Approved ({reinstatementCounts.approved})
+          </button>
+          <button
+            type="button"
+            className={reinstatementFilter === 'rejected' ? 'active' : ''}
+            onClick={() => setReinstatementFilter('rejected')}
+          >
+            Rejected ({reinstatementCounts.rejected})
+          </button>
+          <button
+            type="button"
+            className={reinstatementFilter === 'all' ? 'active' : ''}
+            onClick={() => setReinstatementFilter('all')}
+          >
+            All Requests
+          </button>
+        </div>
+        <div className="users-table-wrap">
+          <table className="users-table reinstatement-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Department</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleReinstatementRequests.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="empty-table-cell">No reinstatement requests found</td>
+                </tr>
+              ) : (
+                visibleReinstatementRequests.map((request) => {
+                  const requestMember = memberById.get(request.user_id);
+                  return (
+                    <tr key={request.id}>
+                      <td>
+                        <strong>{request.requester_name || requestMember?.name || 'Unknown Employee'}</strong>
+                        <small>{request.requester_email || requestMember?.email || '-'}</small>
+                      </td>
+                      <td>{requestMember?.department || request.department || '-'}</td>
+                      <td>{formatHistoryDate(request.requested_at)}</td>
+                      <td>
+                        <span className={`request-status-pill ${request.status}`}>
+                          {request.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="users-card status-management-card">
+        <div className="users-section-heading">
+          <h2>User Status Management</h2>
+          <p>Manage and configure user account statuses and their behavior.</p>
+        </div>
+        <div className="users-table-wrap">
+          <table className="users-table status-management-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Login Allowed</th>
+                <th>Access to Modules</th>
+                <th>Actions Allowed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span className="status-guide-pill active">Active</span></td>
+                <td>User has full access to all modules and features.</td>
+                <td className="yes-text">Yes</td>
+                <td className="yes-text">Full Access</td>
+                <td className="yes-text">All Allowed</td>
+              </tr>
+              <tr>
+                <td><span className="status-guide-pill suspended">Suspended</span></td>
+                <td>User can login but all modules are blocked. Only suspension page is visible.</td>
+                <td className="yes-text">Yes</td>
+                <td><span className="blocked-pill">Blocked</span></td>
+                <td className="no-text">None Allowed</td>
+              </tr>
+              <tr>
+                <td><span className="status-guide-pill deactivated">Deactivated</span></td>
+                <td>Account is permanently deactivated. No login allowed.</td>
+                <td className="no-text">No</td>
+                <td className="no-text">No Access</td>
+                <td className="no-text">None Allowed</td>
+              </tr>
             </tbody>
           </table>
         </div>

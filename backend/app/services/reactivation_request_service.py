@@ -1,3 +1,4 @@
+"""Runs business logic for reactivation request."""
 from typing import Dict, List, Optional
 
 from fastapi import HTTPException, Request
@@ -9,7 +10,9 @@ from app.repositories.user_repository import UserRepository
 from app.utils.audit_helper import log_action
 
 
+# Runs serialize request.
 def _serialize_request(request: ReactivationRequest) -> Dict:
+    """Runs serialize request logic."""
     return {
         "id": request.id,
         "user_id": request.user_id,
@@ -27,9 +30,13 @@ def _serialize_request(request: ReactivationRequest) -> Dict:
     }
 
 
+# Defines the reactivation request service class.
 class ReactivationRequestService:
+    """Groups reactivation request service helper functions."""
     @staticmethod
+    # Runs submit request.
     def submit_request(user: User, message: Optional[str], request: Optional[Request] = None) -> Dict:
+        """Runs submit request logic."""
         if user.is_active:
             raise HTTPException(status_code=400, detail="Account is already active")
         if not user.company_id:
@@ -72,7 +79,9 @@ class ReactivationRequestService:
             db.close()
 
     @staticmethod
+    # Gets my requests data.
     def get_my_requests(user: User) -> List[Dict]:
+        """Returns my requests data."""
         db = SessionLocal()
         try:
             requests = ReactivationRequestRepository.get_for_user(db, user.id)
@@ -81,7 +90,9 @@ class ReactivationRequestService:
             db.close()
 
     @staticmethod
+    # Gets pending for admin data.
     def get_pending_for_admin(admin_user: User) -> List[Dict]:
+        """Returns pending for admin data."""
         if not admin_user.company_id:
             raise HTTPException(status_code=403, detail="Admin must belong to a company")
         db = SessionLocal()
@@ -94,7 +105,9 @@ class ReactivationRequestService:
             db.close()
 
     @staticmethod
+    # Runs approve request.
     def approve_request(request_id: int, admin_user: User, request: Optional[Request] = None) -> Dict:
+        """Runs approve request logic."""
         db = SessionLocal()
         try:
             reactivation_request = ReactivationRequestRepository.get_by_id(db, request_id)
@@ -145,7 +158,9 @@ class ReactivationRequestService:
             db.close()
 
     @staticmethod
+    # Runs reject request.
     def reject_request(request_id: int, admin_user: User, request: Optional[Request] = None) -> Dict:
+        """Runs reject request logic."""
         db = SessionLocal()
         try:
             reactivation_request = ReactivationRequestRepository.get_by_id(db, request_id)

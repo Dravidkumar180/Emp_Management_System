@@ -1,9 +1,11 @@
+// Shows the departments page.
 import React, { useState, useEffect } from 'react';
 import { getAllEmployees } from '../services/api';
 import './Departments.css';
 import { useNotifications } from '../context/NotificationContext';
 import { logAuditAction } from '../services/audit';
 
+// Shows the departments component.
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,16 +14,19 @@ const Departments = () => {
   const [newDepartment, setNewDepartment] = useState('');
   const [addError, setAddError] = useState('');
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadDepartments();
   }, []);
 
   const { addNotification } = useNotifications();
 
+  // Gets saved departments data.
   const getSavedDepartments = () => {
     return JSON.parse(localStorage.getItem('departments') || '[]');
   };
 
+  // Helps with build department list.
   const buildDepartmentList = (employees, savedDepartments) => {
     const deptMap = {};
     employees.forEach(emp => {
@@ -41,6 +46,7 @@ const Departments = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   };
 
+  // Gets departments data.
   const loadDepartments = async () => {
     try {
       setLoading(true);
@@ -53,6 +59,7 @@ const Departments = () => {
     }
   };
 
+  // Saves department data.
   const saveDepartment = async () => {
     const trimmedName = newDepartment.trim();
     if (!trimmedName) {

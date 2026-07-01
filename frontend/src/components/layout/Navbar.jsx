@@ -1,15 +1,23 @@
+// Builds the navbar layout.
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../common/ThemeToggle';
 import { useNotifications } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
-import { fetchMyRoleRequests, fetchPendingRoleRequests, fetchPendingReactivationRequests } from '../../services/auth';
+import {
+  fetchMyRoleRequests,
+  fetchMyReinstatementRequests,
+  fetchPendingRoleRequests,
+  fetchPendingReactivationRequests,
+  fetchReinstatementRequests,
+} from '../../services/auth';
 import { logAuditAction } from '../../services/audit';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
 
 const ACCESS_REQUESTS_KEY = 'attendanceAccessRequests';
 
+// Reads data from storage.
 const readStorage = (key, fallback = []) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -18,10 +26,12 @@ const readStorage = (key, fallback = []) => {
   }
 };
 
+// Writes storage.
 const writeStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+// Helps with format date time.
 const formatDateTime = (value) => {
   if (!value) return '';
   const date = new Date(value);
@@ -29,6 +39,7 @@ const formatDateTime = (value) => {
   return date.toLocaleString();
 };
 
+// Shows the navbar component.
 const Navbar = ({ onSidebarToggle }) => {
   const navigate = useNavigate();
   const { notifications, removeNotification, clearNotifications, addNotification, refreshNotificationScope } = useNotifications();
@@ -41,7 +52,9 @@ const Navbar = ({ onSidebarToggle }) => {
   const lastNotificationUserRef = useRef('');
   const wrapRef = useRef(null);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Handles click outside actions.
     const handleClickOutside = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) {
         setDropdownOpen(false);
@@ -87,6 +100,7 @@ const Navbar = ({ onSidebarToggle }) => {
     day: 'numeric' 
   });
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     const notificationUserKey = userEmail ? `${userEmail}:${user?.role || 'user'}:${userCompanyId}` : '';
     if (lastNotificationUserRef.current !== notificationUserKey) {
@@ -99,6 +113,7 @@ const Navbar = ({ onSidebarToggle }) => {
     }
   }, [refreshNotificationScope, user?.role, userCompanyId, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!isAdmin) {
       setPendingCount(0);
@@ -107,18 +122,24 @@ const Navbar = ({ onSidebarToggle }) => {
 
     let active = true;
 
+    // Gets pending notifications data.
     const loadPendingNotifications = async () => {
       try {
         const roleRequests = await fetchPendingRoleRequests();
         const reactivationRequests = await fetchPendingReactivationRequests();
+        const reinstatementRequests = await fetchReinstatementRequests();
         if (!active) return;
 
         const requests = [
           ...roleRequests.map((request) => ({ ...request, notificationType: 'role' })),
           ...reactivationRequests.map((request) => ({ ...request, notificationType: 'reactivation' })),
+          ...reinstatementRequests
+            .filter((request) => request.status === 'pending')
+            .map((request) => ({ ...request, notificationType: 'reinstatement' })),
         ];
 
         setPendingCount(requests.length);
+        // Prepares current ids.
         const currentIds = new Set(requests.map((request) => `${request.notificationType}:${request.id}`));
 
         if (initialPendingLoad.current) {
@@ -131,13 +152,19 @@ const Navbar = ({ onSidebarToggle }) => {
             });
           }
         } else {
+          // Prepares new requests.
           const newRequests = requests.filter((request) => !pendingRequestIdsRef.current.has(`${request.notificationType}:${request.id}`));
           if (newRequests.length > 0) {
+            // Prepares reactivation count.
             const reactivationCount = newRequests.filter((request) => request.notificationType === 'reactivation').length;
+            // Prepares reinstatement count.
+            const reinstatementCount = newRequests.filter((request) => request.notificationType === 'reinstatement').length;
             addNotification({
               type: 'info',
-              title: reactivationCount > 0 ? 'New Reactivation Request' : 'New Role Request',
-              message: reactivationCount > 0
+              title: reinstatementCount > 0 ? 'New Reinstatement Request' : reactivationCount > 0 ? 'New Reactivation Request' : 'New Role Request',
+              message: reinstatementCount > 0
+                ? `${reinstatementCount} reinstatement request${reinstatementCount > 1 ? 's' : ''} need review.`
+                : reactivationCount > 0
                 ? `${reactivationCount} reactivation request${reactivationCount > 1 ? 's' : ''} need review.`
                 : `${newRequests.length} new role request${newRequests.length > 1 ? 's' : ''} need review.`,
             });
@@ -146,7 +173,7 @@ const Navbar = ({ onSidebarToggle }) => {
 
         pendingRequestIdsRef.current = currentIds;
       } catch (error) {
-        console.error('Failed to load pending role requests for notifications', error);
+        console.error('Failed to load pending requests for notifications', error);
       }
     };
 
@@ -159,6 +186,7 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [isAdmin, addNotification]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!isAdmin) {
       setPendingAttendanceRequests([]);
@@ -167,6 +195,7 @@ const Navbar = ({ onSidebarToggle }) => {
 
     let active = true;
 
+    // Sends attendance access requests notifications.
     const notifyAttendanceAccessRequests = () => {
       try {
         const requests = readStorage(ACCESS_REQUESTS_KEY);
@@ -189,8 +218,10 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [isAdmin, userCompanyId]);
 
+  // Handles attendance access review actions.
   const handleAttendanceAccessReview = async (requestId, nextStatus) => {
     const requests = readStorage(ACCESS_REQUESTS_KEY);
+    // Prepares old request.
     const oldRequest = requests.find((request) => request.id === requestId);
     if (!oldRequest) return;
 
@@ -200,6 +231,7 @@ const Navbar = ({ onSidebarToggle }) => {
       reviewedAt: new Date().toISOString(),
       reviewedBy: user?.name || user?.email || 'Admin',
     };
+    // Prepares next requests.
     const nextRequests = requests.map((request) => (
       request.id === requestId ? reviewedRequest : request
     ));
@@ -225,6 +257,7 @@ const Navbar = ({ onSidebarToggle }) => {
     });
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!isAdmin) {
       return;
@@ -233,6 +266,7 @@ const Navbar = ({ onSidebarToggle }) => {
     let active = true;
     const seenStorageKey = `leaveRequestAdminNotifications:${userCompanyId}:${userEmail || 'admin'}`;
 
+    // Gets seen notifications data.
     const getSeenNotifications = () => {
       try {
         return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
@@ -241,10 +275,12 @@ const Navbar = ({ onSidebarToggle }) => {
       }
     };
 
+    // Saves seen notifications data.
     const saveSeenNotifications = (seen) => {
       localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
     };
 
+    // Sends leave requests notifications.
     const notifyLeaveRequests = () => {
       try {
         const requests = JSON.parse(localStorage.getItem('userLeaveRequests') || '[]');
@@ -285,14 +321,16 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!userEmail || isAdmin) {
       return;
     }
 
     let active = true;
-    const seenStorageKey = `roleRequestNotifications:${userEmail}:${userCompanyId}`;
+    const seenStorageKey = `reinstatementUserNotifications:${userEmail}:${userCompanyId}`;
 
+    // Gets seen notifications data.
     const getSeenNotifications = () => {
       try {
         return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
@@ -301,10 +339,79 @@ const Navbar = ({ onSidebarToggle }) => {
       }
     };
 
+    // Saves seen notifications data.
     const saveSeenNotifications = (seen) => {
       localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
     };
 
+    // Sends reinstatement status notifications.
+    const notifyReinstatementStatus = async () => {
+      try {
+        const requests = await fetchMyReinstatementRequests();
+        if (!active) return;
+
+        const seen = getSeenNotifications();
+        let changed = false;
+
+        requests
+          .filter((request) => request.status === 'approved' || request.status === 'rejected')
+          .forEach((request) => {
+            const seenKey = `${request.id}:${request.status}:${request.reviewed_at || ''}`;
+            if (seen.has(seenKey)) return;
+
+            const approved = request.status === 'approved';
+            addNotification({
+              type: approved ? 'success' : 'info',
+              title: approved ? 'Reinstatement Approved' : 'Reinstatement Rejected',
+              message: approved
+                ? 'Your reinstatement request was approved.'
+                : 'Your reinstatement request was rejected.',
+            });
+            seen.add(seenKey);
+            changed = true;
+          });
+
+        if (changed) {
+          saveSeenNotifications(seen);
+        }
+      } catch (error) {
+        console.error('Failed to load reinstatement status notification', error);
+      }
+    };
+
+    notifyReinstatementStatus();
+    const interval = setInterval(notifyReinstatementStatus, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
+
+  // Runs when this screen needs to update data.
+  useEffect(() => {
+    if (!userEmail || isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `roleRequestNotifications:${userEmail}:${userCompanyId}`;
+
+    // Gets seen notifications data.
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    // Saves seen notifications data.
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    // Sends reviewed requests notifications.
     const notifyReviewedRequests = async () => {
       try {
         const requests = await fetchMyRoleRequests();
@@ -348,6 +455,7 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!userEmail || isAdmin) {
       return;
@@ -356,6 +464,7 @@ const Navbar = ({ onSidebarToggle }) => {
     let active = true;
     const seenStorageKey = `leaveRequestUserNotifications:${userEmail}:${userCompanyId}`;
 
+    // Gets seen notifications data.
     const getSeenNotifications = () => {
       try {
         return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
@@ -364,10 +473,12 @@ const Navbar = ({ onSidebarToggle }) => {
       }
     };
 
+    // Saves seen notifications data.
     const saveSeenNotifications = (seen) => {
       localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
     };
 
+    // Sends leave status notifications.
     const notifyLeaveStatus = () => {
       try {
         const requests = JSON.parse(localStorage.getItem('userLeaveRequests') || '[]');
@@ -410,6 +521,7 @@ const Navbar = ({ onSidebarToggle }) => {
     };
   }, [addNotification, isAdmin, userCompanyId, userEmail]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!userEmail || isAdmin) {
       return;
@@ -418,6 +530,7 @@ const Navbar = ({ onSidebarToggle }) => {
     let active = true;
     const seenStorageKey = `attendanceAccessUserNotifications:${userEmail}:${userCompanyId}`;
 
+    // Gets seen notifications data.
     const getSeenNotifications = () => {
       try {
         return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
@@ -426,15 +539,18 @@ const Navbar = ({ onSidebarToggle }) => {
       }
     };
 
+    // Saves seen notifications data.
     const saveSeenNotifications = (seen) => {
       localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
     };
 
+    // Sends attendance access status notifications.
     const notifyAttendanceAccessStatus = () => {
       try {
         const requests = JSON.parse(localStorage.getItem('attendanceAccessRequests') || '[]');
         if (!active) return;
 
+        // Prepares request.
         const request = requests.find((item) => item.email === userEmail && item.companyId === userCompanyId);
         if (!request || (request.status !== 'approved' && request.status !== 'rejected')) return;
 

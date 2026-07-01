@@ -1,18 +1,22 @@
+"""Reads and writes employee data in the database."""
 from sqlalchemy.orm import Session
 from app.database.models import Employee  # Remove Department import
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from typing import List, Optional
 from datetime import datetime
 
+# Defines the employee repository class.
 class EmployeeRepository:
     """Repository for employee database operations"""
     
     @staticmethod
+    # Gets all records.
     def get_all(db: Session, company_id: int, skip: int = 0, limit: int = 100) -> List[Employee]:
         """Get all employees for a specific company"""
         return db.query(Employee).filter(Employee.company_id == company_id).offset(skip).limit(limit).all()
     
     @staticmethod
+    # Gets data by ID.
     def get_by_id(db: Session, employee_id: int, company_id: int) -> Optional[Employee]:
         """Get employee by ID with company check"""
         return db.query(Employee).filter(
@@ -21,6 +25,7 @@ class EmployeeRepository:
         ).first()
     
     @staticmethod
+    # Gets data by email.
     def get_by_email(db: Session, email: str, company_id: int) -> Optional[Employee]:
         """Get employee by email within a specific company"""
         return db.query(Employee).filter(
@@ -29,6 +34,7 @@ class EmployeeRepository:
         ).first()
     
     @staticmethod
+    # Gets data by department.
     def get_by_department(db: Session, department: str, company_id: int) -> List[Employee]:
         """Get employees by department within a specific company"""
         return db.query(Employee).filter(
@@ -37,6 +43,7 @@ class EmployeeRepository:
         ).all()
     
     @staticmethod
+    # Creates this file data.
     def create(db: Session, employee: EmployeeCreate, company_id: int) -> Employee:
         """Create new employee for a specific company"""
         # Generate username from name if not provided
@@ -67,6 +74,7 @@ class EmployeeRepository:
         return db_employee
     
     @staticmethod
+    # Updates this record.
     def update(db: Session, employee_id: int, company_id: int, employee_update: EmployeeUpdate) -> Optional[Employee]:
         """Update employee with company check"""
         db_employee = EmployeeRepository.get_by_id(db, employee_id, company_id)
@@ -84,6 +92,7 @@ class EmployeeRepository:
         return db_employee
     
     @staticmethod
+    # Deletes this record.
     def delete(db: Session, employee_id: int, company_id: int) -> bool:
         """Delete employee with company check"""
         db_employee = EmployeeRepository.get_by_id(db, employee_id, company_id)
@@ -94,6 +103,7 @@ class EmployeeRepository:
         return True
     
     @staticmethod
+    # Gets stats by department data.
     def get_stats_by_department(db: Session, company_id: int) -> dict:
         """Get employee count by department within a specific company"""
         employees = EmployeeRepository.get_all(db, company_id)
@@ -103,6 +113,7 @@ class EmployeeRepository:
         return stats
     
     @staticmethod
+    # Gets stats by status data.
     def get_stats_by_status(db: Session, company_id: int) -> dict:
         """Get employee count by status within a specific company"""
         employees = EmployeeRepository.get_all(db, company_id)
@@ -115,11 +126,13 @@ class EmployeeRepository:
         return stats
     
     @staticmethod
+    # Gets total count data.
     def get_total_count(db: Session, company_id: int) -> int:
         """Get total number of employees in a specific company"""
         return db.query(Employee).filter(Employee.company_id == company_id).count()
     
     @staticmethod
+    # Gets active count data.
     def get_active_count(db: Session, company_id: int) -> int:
         """Get number of active employees in a specific company"""
         return db.query(Employee).filter(
@@ -128,6 +141,7 @@ class EmployeeRepository:
         ).count()
     
     @staticmethod
+    # Gets recent employees data.
     def get_recent_employees(db: Session, company_id: int, limit: int = 5) -> List[Employee]:
         """Get most recently added employees for a specific company"""
         return db.query(Employee).filter(

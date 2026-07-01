@@ -1,3 +1,4 @@
+// Shows the companies page.
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ const COMPANIES = [
   { id: 'company-b', name: 'Company B' },
 ];
 
+// Shows the companies component.
 const Companies = () => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
@@ -24,11 +26,14 @@ const Companies = () => {
     access: '',
   });
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     setActiveCompanyId(currentCompanyId);
   }, [currentCompanyId]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Gets employees data.
     const loadEmployees = async () => {
       try {
         setLoading(true);
@@ -44,7 +49,9 @@ const Companies = () => {
     loadEmployees();
   }, []);
 
+  // Prepares companies.
   const companies = useMemo(() => {
+    // Prepares default companies.
     const defaultCompanies = COMPANIES.map((company) => ({
       ...company,
       access: company.id === currentCompanyId ? 'Current company' : 'Isolated tenant',
@@ -58,10 +65,13 @@ const Companies = () => {
     }));
   }, [currentCompanyId, customCompanies, employees]);
 
+  // Prepares active company.
   const activeCompany = companies.find((company) => company.id === activeCompanyId) || companies[0];
+  // Prepares current company.
   const currentCompany = companies.find((company) => company.id === currentCompanyId) || activeCompany;
   const isAddCompanyValid = formData.name.trim() && formData.slug.trim() && formData.access;
 
+  // Helps with reset form.
   const resetForm = () => {
     setFormData({
       name: '',
@@ -70,17 +80,20 @@ const Companies = () => {
     });
   };
 
+  // Helps with close add modal.
   const closeAddModal = () => {
     setShowAddModal(false);
     resetForm();
   };
 
+  // Handles add company actions.
   const handleAddCompany = async (event) => {
     event.preventDefault();
 
     if (!isAddCompanyValid) return;
 
     const slug = formData.slug.trim().toLowerCase().replace(/\s+/g, '-');
+    // Prepares already exists.
     const alreadyExists = companies.some((company) => company.id === slug);
 
     if (alreadyExists) {

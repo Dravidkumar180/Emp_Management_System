@@ -1,9 +1,11 @@
+// Shows the audit logs page.
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { Toaster, toast } from 'react-hot-toast';
 import { fetchAuditLogs as fetchAuditLogsFromApi } from '../services/audit';
 import './AuditLogs.css';
 
+// Shows the audit logs component.
 const AuditLogs = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -11,10 +13,12 @@ const AuditLogs = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    // Runs when this screen needs to update data.
     useEffect(() => {
         fetchAuditLogs();
     }, []);
 
+    // Gets audit logs data.
     const fetchAuditLogs = async () => {
         try {
             setLoading(true);
@@ -28,6 +32,7 @@ const AuditLogs = () => {
         }
     };
 
+    // Gets action icon data.
     const getActionIcon = (action) => {
         const safeAction = String(action || '');
         if (safeAction.includes('Created')) return '+';
@@ -41,6 +46,7 @@ const AuditLogs = () => {
         return 'Log';
     };
 
+    // Gets action class data.
     const getActionClass = (action) => {
         const safeAction = String(action || '');
         if (safeAction.includes('Created')) return 'action-create';
@@ -52,6 +58,7 @@ const AuditLogs = () => {
         return '';
     };
 
+    // Helps with filtered logs.
     const filteredLogs = logs.filter((log) => {
         const action = String(log.action || '');
         const userName = String(log.user_name || '');

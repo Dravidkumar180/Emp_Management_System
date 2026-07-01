@@ -1,3 +1,5 @@
+/* Styles the loading skeleton component. */
+/* Loading Skeleton styles the frontend/src/components/common/LoadingSkeleton.css interface. */
 .skeleton-container {
   background: var(--bg-card);
   border-radius: 12px;

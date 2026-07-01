@@ -1,3 +1,4 @@
+// Shows the settings page.
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -9,14 +10,18 @@ import {
   submitRoleChangeRequest,
   fetchPendingReactivationRequests,
   approveReactivationRequest,
-  rejectReactivationRequest
+  rejectReactivationRequest,
+  fetchReinstatementRequests,
+  approveReinstatementRequest,
+  rejectReinstatementRequest
 } from '../services/auth';
 import './Settings.css';
-import { useNotifications } from '../context/NotificationContext';
+import { createNotificationForUser, useNotifications } from '../context/NotificationContext';
 import { logAuditAction } from '../services/audit';
 
 const LEAVE_REQUESTS_KEY = 'userLeaveRequests';
 
+// Reads data from storage.
 const readStorage = (key, fallback = []) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -25,10 +30,12 @@ const readStorage = (key, fallback = []) => {
   }
 };
 
+// Writes storage.
 const writeStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+// Shows the settings component.
 const Settings = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { user } = useAuth();
@@ -84,6 +91,8 @@ const Settings = () => {
   const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [reactivationRequests, setReactivationRequests] = useState([]);
   const [reactivationMessage, setReactivationMessage] = useState('');
+  const [reinstatementRequests, setReinstatementRequests] = useState([]);
+  const [reinstatementMessage, setReinstatementMessage] = useState('');
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveMessage, setLeaveMessage] = useState('');
 
@@ -118,6 +127,7 @@ const Settings = () => {
   const [requestLoading, setRequestLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
 
+  // Gets requests data.
   const loadRequests = async () => {
     if (!user) return;
     setRequestsLoading(true);
@@ -129,7 +139,9 @@ const Settings = () => {
       setRequests(data);
       if (isAdmin) {
         const reactivationData = await fetchPendingReactivationRequests();
+        const reinstatementData = await fetchReinstatementRequests();
         setReactivationRequests(reactivationData);
+        setReinstatementRequests(reinstatementData.filter((request) => request.status === 'pending'));
         setLeaveRequests(
           readStorage(LEAVE_REQUESTS_KEY).filter((request) => (
             request.companyId === userCompanyId && request.status === 'pending'
@@ -143,12 +155,14 @@ const Settings = () => {
     }
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (user && activeTab === 'roleRequest') {
       loadRequests();
     }
   }, [activeTab, user, userCompanyId]);
 
+  // Handles role request actions.
   const handleRoleRequest = async (event) => {
     event.preventDefault();
     if (!adminEmail || !currentPassword) {
@@ -171,6 +185,7 @@ const Settings = () => {
     }
   };
 
+  // Handles admin action actions.
   const handleAdminAction = async (requestId, action) => {
     setAdminActionLoading(true);
     setRequestsMessage('');
@@ -190,22 +205,27 @@ const Settings = () => {
     }
   };
 
+  // Handles notification change actions.
   const handleNotificationChange = (key, value) => {
     setNotificationSettings({ ...notificationSettings, [key]: value });
   };
 
+  // Handles attendance change actions.
   const handleAttendanceChange = (key, value) => {
     setAttendanceSettings({ ...attendanceSettings, [key]: value });
   };
 
+  // Handles leave change actions.
   const handleLeaveChange = (key, value) => {
     setLeaveSettings({ ...leaveSettings, [key]: value });
   };
 
+  // Handles report change actions.
   const handleReportChange = (key, value) => {
     setReportSettings({ ...reportSettings, [key]: value });
   };
 
+  // Handles appearance change actions.
   const handleAppearanceChange = (key, value) => {
     setAppearanceSettings({ ...appearanceSettings, [key]: value });
     if (key === 'theme') {
@@ -213,6 +233,7 @@ const Settings = () => {
     }
   };
 
+  // Handles reactivation action actions.
   const handleReactivationAction = async (requestId, action) => {
     setAdminActionLoading(true);
     setReactivationMessage('');
@@ -232,11 +253,56 @@ const Settings = () => {
     }
   };
 
+  // Handles reinstatement action actions.
+  const handleReinstatementAction = async (request, action) => {
+    setAdminActionLoading(true);
+    setReinstatementMessage('');
+    try {
+      const approved = action === 'approve';
+      if (approved) {
+        await approveReinstatementRequest(request.id);
+        setReinstatementMessage('Reinstatement request approved.');
+      } else {
+        await rejectReinstatementRequest(request.id);
+        setReinstatementMessage('Reinstatement request rejected.');
+      }
+
+      addNotification({
+        type: approved ? 'success' : 'info',
+        title: approved ? 'Reinstatement Approved' : 'Reinstatement Rejected',
+        message: `${request.requester_name || request.requester_email}'s reinstatement request was ${approved ? 'approved' : 'rejected'}.`,
+      });
+      createNotificationForUser(
+        {
+          name: request.requester_name,
+          email: request.requester_email,
+          role: 'user',
+          company_id: request.company_id,
+        },
+        {
+          type: approved ? 'success' : 'info',
+          title: approved ? 'Reinstatement Approved' : 'Reinstatement Rejected',
+          message: approved
+            ? 'Your reinstatement request was approved. You can access the app again.'
+            : 'Your reinstatement request was rejected. Your account remains suspended.',
+        }
+      );
+
+      await loadRequests();
+    } catch (error) {
+      setReinstatementMessage(error.response?.data?.detail || 'Unable to update reinstatement request.');
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  // Handles leave action actions.
   const handleLeaveAction = async (requestId, action) => {
     setAdminActionLoading(true);
     setLeaveMessage('');
     try {
       const requests = readStorage(LEAVE_REQUESTS_KEY);
+      // Prepares old request.
       const oldRequest = requests.find((request) => request.id === requestId);
       if (!oldRequest) {
         setLeaveMessage('Leave request not found.');
@@ -250,6 +316,7 @@ const Settings = () => {
         reviewedAt: new Date().toISOString(),
         reviewedBy: user?.name || user?.email || 'Admin',
       };
+      // Prepares next requests.
       const nextRequests = requests.map((request) => (
         request.id === requestId ? updatedRequest : request
       ));
@@ -281,6 +348,7 @@ const Settings = () => {
     }
   };
 
+  // Prepares persist user settings.
   const persistUserSettings = (updates = {}) => {
     const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
     localStorage.setItem('appSettings', JSON.stringify({
@@ -292,24 +360,28 @@ const Settings = () => {
     }));
   };
 
+  // Handles profile change actions.
   const handleProfileChange = (key, value) => {
     const nextProfile = { ...profileSettings, [key]: value };
     setProfileSettings(nextProfile);
     persistUserSettings({ profile: nextProfile });
   };
 
+  // Handles security change actions.
   const handleSecurityChange = (key, value) => {
     const nextSecurity = { ...securitySettings, [key]: value };
     setSecuritySettings(nextSecurity);
     persistUserSettings({ security: nextSecurity });
   };
 
+  // Handles user notification change actions.
   const handleUserNotificationChange = (key, value) => {
     const nextNotifications = { ...notificationSettings, [key]: value };
     setNotificationSettings(nextNotifications);
     persistUserSettings({ notifications: nextNotifications });
   };
 
+  // Handles user appearance change actions.
   const handleUserAppearanceChange = (key, value) => {
     const nextAppearance = { ...appearanceSettings, [key]: value };
     setAppearanceSettings(nextAppearance);
@@ -320,6 +392,7 @@ const Settings = () => {
     }
   };
 
+  // Saves all settings.
   const saveAllSettings = () => {
     setSaving(true);
     // Simulate saving to backend
@@ -339,6 +412,7 @@ const Settings = () => {
 
   const { addNotification } = useNotifications();
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (!saving && saveMessage) {
       addNotification({ type: 'success', title: 'Settings Saved', message: saveMessage });
@@ -347,6 +421,7 @@ const Settings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveMessage]);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     // Load saved settings from localStorage
     const savedSettings = localStorage.getItem('appSettings');
@@ -803,6 +878,46 @@ const Settings = () => {
                   </div>
                 )}
                 {reactivationMessage && <div className="role-request-message">{reactivationMessage}</div>}
+              </section>
+              <section className="user-role-request admin-approvals-panel">
+                <h2>Pending Reinstatement Requests</h2>
+                <p>Approve or reject suspended account reinstatement requests.</p>
+                {requestsLoading ? (
+                  <div className="role-requests-loading">Loading reinstatement requests...</div>
+                ) : reinstatementRequests.length === 0 ? (
+                  <div className="role-requests-empty">No pending reinstatement requests for {user?.email}.</div>
+                ) : (
+                  <div className="approval-list">
+                    {reinstatementRequests.map((request) => (
+                      <div key={request.id} className="approval-row reinstatement-approval-row">
+                        <div className="approval-user">
+                          <strong>{request.requester_name}</strong>
+                          <span>{request.requester_email} requested suspension reinstatement.</span>
+                          {request.message && <small>Comment: {request.message}</small>}
+                        </div>
+                        <div className="approval-actions">
+                          <button
+                            className="approval-approve"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleReinstatementAction(request, 'approve')}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="approval-reject"
+                            type="button"
+                            disabled={adminActionLoading}
+                            onClick={() => handleReinstatementAction(request, 'reject')}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {reinstatementMessage && <div className="role-request-message">{reinstatementMessage}</div>}
               </section>
               <section className="user-role-request admin-approvals-panel">
                 <h2>Pending Leave Requests</h2>

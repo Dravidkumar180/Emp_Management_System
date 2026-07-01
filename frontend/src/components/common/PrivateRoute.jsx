@@ -1,7 +1,9 @@
+// Reusable private route component.
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
+// Shows the private route component.
 const PrivateRoute = ({ children, allowedRoles = [] }) => {
   const { user } = useAuth();
   const isAuthenticated = user || localStorage.getItem('user');

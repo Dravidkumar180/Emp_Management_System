@@ -1,3 +1,4 @@
+// Connects the frontend to activity tracking API features.
 const ACTIVITY_STORAGE_KEY = 'accountActivityRecords';
 const COMPANY_STORAGE_KEY = 'userCompanies';
 const LEGACY_HISTORY_VERSION = 1;
@@ -7,17 +8,21 @@ const DEMO_IPS = {
   'company-b': ['45.118.166.21', '103.87.142.18', '152.58.221.42', '49.36.88.104', '157.49.19.76'],
 };
 
+// Helps with normalize email.
 const normalizeEmail = (email = '') => email.trim().toLowerCase();
 
+// Helps with normalize company id.
 const normalizeCompanyId = (companyId) => {
   if (companyId === 1 || companyId === '1') return 'company-a';
   if (companyId === 2 || companyId === '2') return 'company-b';
   return companyId || 'company-a';
 };
 
+// Reads records from storage.
 const readRecords = () => {
   try {
     const records = JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY) || '[]');
+    // Prepares cleaned records.
     const cleanedRecords = records.filter((record) => !record.demoActivityVersion);
     if (cleanedRecords.length !== records.length) {
       writeRecords(cleanedRecords);
@@ -46,10 +51,12 @@ const LEGACY_BROWSERS = [
   'Safari 17.5 / macOS 14',
 ];
 
+// Writes records.
 const writeRecords = (records) => {
   localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(records));
 };
 
+// Gets stored company for email data.
 const getStoredCompanyForEmail = (email) => {
   try {
     const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
@@ -59,6 +66,7 @@ const getStoredCompanyForEmail = (email) => {
   }
 };
 
+// Gets browser info data.
 const getBrowserInfo = () => {
   if (typeof navigator === 'undefined') return 'Unknown browser';
 
@@ -82,18 +90,22 @@ const getBrowserInfo = () => {
   return `${match || 'Browser'} / ${platform}`;
 };
 
+// Gets stable demo ip data.
 const getStableDemoIp = (user) => {
   const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const companyIps = DEMO_IPS[companyId] || DEMO_IPS['company-a'];
   const email = normalizeEmail(user?.email);
+  // Prepares hash.
   const hash = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return companyIps[hash % companyIps.length];
 };
 
+// Gets public ip data.
 const fetchPublicIp = async (fallbackIp) => {
   if (typeof fetch === 'undefined') return fallbackIp;
 
   const controller = new AbortController();
+  // Prepares timeout ID.
   const timeoutId = setTimeout(() => controller.abort(), 1500);
 
   try {
@@ -110,12 +122,14 @@ const fetchPublicIp = async (fallbackIp) => {
   }
 };
 
+// Adds or updates record.
 const upsertRecord = (user, changes) => {
   if (!user?.email) return null;
 
   const records = readRecords();
   const email = normalizeEmail(user.email);
   const companyId = normalizeCompanyId(user.companyId || user.company_id);
+  // Prepares existing index.
   const existingIndex = records.findIndex((record) => (
     normalizeEmail(record.email) === email && normalizeCompanyId(record.companyId) === companyId
   ));
@@ -146,6 +160,7 @@ const upsertRecord = (user, changes) => {
   return nextRecord;
 };
 
+// Adds history.
 const appendHistory = (record, type, timestamp) => ({
   ...record,
   history: [
@@ -159,6 +174,7 @@ const appendHistory = (record, type, timestamp) => ({
   ],
 });
 
+// Records signup activity.
 export const recordSignupActivity = async (user) => {
   const timestamp = new Date().toISOString();
   const browser = getBrowserInfo();
@@ -176,6 +192,7 @@ export const recordSignupActivity = async (user) => {
   return nextRecord;
 };
 
+// Records login activity.
 export const recordLoginActivity = async (user) => {
   const timestamp = new Date().toISOString();
   const browser = getBrowserInfo();
@@ -193,6 +210,7 @@ export const recordLoginActivity = async (user) => {
   return nextRecord;
 };
 
+// Records logout activity.
 export const recordLogoutActivity = (user) => {
   const timestamp = new Date().toISOString();
   const baseRecord = upsertRecord(user, {
@@ -206,20 +224,24 @@ export const recordLogoutActivity = (user) => {
   return nextRecord;
 };
 
+// Gets activity records data.
 export const getActivityRecords = () => readRecords();
 
+// Prepares ensure legacy account history.
 export const ensureLegacyAccountHistory = () => {
   const records = readRecords();
   const now = new Date();
 
   LEGACY_ACCOUNTS.forEach((account, accountIndex) => {
     const email = normalizeEmail(account.email);
+    // Prepares existing record.
     const existingRecord = records.find((record) => normalizeEmail(record.email) === email);
     const companyId = normalizeCompanyId(
       existingRecord?.companyId
       || getStoredCompanyForEmail(account.email)
       || account.fallbackCompanyId
     );
+    // Prepares existing index.
     const existingIndex = records.findIndex((record) => (
       normalizeEmail(record.email) === email && normalizeCompanyId(record.companyId) === companyId
     ));
@@ -227,6 +249,7 @@ export const ensureLegacyAccountHistory = () => {
     const browser = existing.browser || LEGACY_BROWSERS[accountIndex % LEGACY_BROWSERS.length];
     const ipAddress = existing.ipAddress || getStableDemoIp({ ...account, companyId });
     const history = Array.isArray(existing.history) ? [...existing.history] : [];
+    // Prepares already backfilled.
     const alreadyBackfilled = history.some((item) => item.legacyHistoryVersion === LEGACY_HISTORY_VERSION);
 
     if (!alreadyBackfilled) {
@@ -255,8 +278,11 @@ export const ensureLegacyAccountHistory = () => {
       }
     }
 
+    // Helps with sorted history.
     const sortedHistory = history.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+    // Prepares last login.
     const lastLogin = sortedHistory.find((item) => item.type === 'login')?.timestamp || existing.lastLogin;
+    // Prepares last logout.
     const lastLogout = sortedHistory.find((item) => item.type === 'logout')?.timestamp || existing.lastLogout;
     const nextRecord = {
       id: existing.id || `${companyId}:${email}`,

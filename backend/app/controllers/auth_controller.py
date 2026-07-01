@@ -1,9 +1,14 @@
+"""Handles auth requests."""
 from fastapi import HTTPException
 from app.services.auth_service import AuthService
 
+# Defines the auth controller class.
 class AuthController:
+    """Groups auth controller helper functions."""
     @staticmethod
+    # Runs register.
     def register(user_data: dict):
+        """Runs register logic."""
         try:
             result = AuthService.register(user_data)
             if not result:
@@ -16,7 +21,9 @@ class AuthController:
             raise HTTPException(status_code=500, detail=str(e))
     
     @staticmethod
+    # Helps with login.
     def login(login_data: dict):
+        """Runs login logic."""
         try:
             result = AuthService.login(login_data)
             if not result:
@@ -29,7 +36,9 @@ class AuthController:
             raise HTTPException(status_code=500, detail=str(e))
 
     @staticmethod
+    # Runs reset password.
     def reset_password(reset_data: dict):
+        """Runs reset password logic."""
         try:
             result = AuthService.reset_password(reset_data)
             if not result:
@@ -42,7 +51,9 @@ class AuthController:
             raise HTTPException(status_code=500, detail=str(e))
 
     @staticmethod
+    # Gets admin reviewers data.
     def get_admin_reviewers(company_id=None):
+        """Returns admin reviewers data."""
         try:
             emails = AuthService.list_admin_reviewers(company_id)
             return {"admins": emails}

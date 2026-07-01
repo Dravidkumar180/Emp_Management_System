@@ -1,3 +1,4 @@
+// Shows the account deactivated page.
 import React, { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +8,7 @@ import {
 } from '../services/auth';
 import './AccountDeactivated.css';
 
+// Shows the account deactivated component.
 const AccountDeactivated = () => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ const AccountDeactivated = () => {
   const [submitting, setSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
+  // Gets requests data.
   const loadRequests = async () => {
     try {
       setLoading(true);
@@ -31,6 +34,7 @@ const AccountDeactivated = () => {
     }
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     if (user?.is_active === false) {
       loadRequests();
@@ -46,8 +50,10 @@ const AccountDeactivated = () => {
   }
 
   const latestRequest = requests[0];
+  // Prepares pending request.
   const pendingRequest = requests.find((request) => request.status === 'pending');
 
+  // Handles submit actions.
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
@@ -64,6 +70,7 @@ const AccountDeactivated = () => {
     }
   };
 
+  // Handles logout actions.
   const handleLogout = () => {
     logout();
     navigate('/login');

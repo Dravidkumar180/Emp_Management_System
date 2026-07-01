@@ -1,3 +1,4 @@
+"""Backend configuration helpers."""
 class DatabaseConfig:
     """Database configuration settings"""
     
@@ -6,7 +7,9 @@ class DatabaseConfig:
     DATABASE_NAME = "employee_db"
     
     @classmethod
+    # Gets config data.
     def get_config(cls):
+        """Returns config data."""
         return {
             "url": cls.DATABASE_URL,
             "name": cls.DATABASE_NAME

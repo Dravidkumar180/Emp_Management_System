@@ -1,13 +1,16 @@
+// Shared hook for use employees data.
 import { useState, useEffect, useCallback } from 'react';
 import { fetchEmployees, createEmployee, deleteEmployee, updateEmployee } from '../services/api';
 import toast from 'react-hot-toast';
 
+// Provides employees.
 export const useEmployees = () => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // Gets employees data.
   const loadEmployees = useCallback(async () => {
     try {
       setLoading(true);
@@ -23,11 +26,13 @@ export const useEmployees = () => {
     }
   }, []);
 
+  // Prepares retry.
   const retry = () => {
     setRetryCount(prev => prev + 1);
     loadEmployees();
   };
 
+  // Saves employee data.
   const addEmployee = async (employeeData) => {
     try {
       const newEmployee = await createEmployee(employeeData);
@@ -40,6 +45,7 @@ export const useEmployees = () => {
     }
   };
 
+  // Updates employee data.
   const editEmployee = async (id, employeeData) => {
     try {
       const updated = await updateEmployee(id, employeeData);
@@ -52,6 +58,7 @@ export const useEmployees = () => {
     }
   };
 
+  // Removes employee data.
   const removeEmployee = async (id) => {
     try {
       await deleteEmployee(id);
@@ -63,6 +70,7 @@ export const useEmployees = () => {
     }
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadEmployees();
   }, [loadEmployees, retryCount]);

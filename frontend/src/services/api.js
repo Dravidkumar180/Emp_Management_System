@@ -1,3 +1,4 @@
+// Connects the frontend to backend API features.
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { logAuditAction } from './audit';
@@ -48,16 +49,20 @@ export const getAllEmployees = async () => {
   try {
     const apiEmployees = await fetchEmployees();
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    // Saves by ID.
     const savedById = savedEmployees.reduce((acc, emp) => {
       acc[emp.id] = emp;
       return acc;
     }, {});
+    // Prepares API by ID.
     const apiById = apiEmployees.reduce((acc, emp) => {
       acc[emp.id] = emp;
       return acc;
     }, {});
 
+    // Prepares merged employees.
     const mergedEmployees = apiEmployees.map((emp) => savedById[emp.id] || emp);
+    // Saves only.
     const savedOnly = savedEmployees.filter((emp) => !apiById[emp.id]);
     return [...mergedEmployees, ...savedOnly];
   } catch (error) {
@@ -85,9 +90,9 @@ export const createEmployee = async (employeeData) => {
       department: employeeData.department,
       status: employeeData.status,
       role: employeeData.role,
-      joinDate: new Date().toISOString().split('T')[0],
+      joinDate: employeeData.joinDate || new Date().toISOString().split('T')[0],
       location: employeeData.location || 'New York',
-      avatar: employeeData.name.charAt(0).toUpperCase()
+      avatar: employeeData.avatar || employeeData.name.charAt(0).toUpperCase()
     };
     
     savedEmployees.push(newEmployee);
@@ -114,6 +119,7 @@ export const createEmployee = async (employeeData) => {
 export const updateEmployee = async (id, employeeData) => {
   try {
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    // Prepares index.
     const index = savedEmployees.findIndex(emp => emp.id === id);
     const oldEmployee = index !== -1 ? savedEmployees[index] : null;
 
@@ -162,7 +168,9 @@ export const updateEmployee = async (id, employeeData) => {
 export const deleteEmployee = async (id) => {
   try {
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    // Removes employee.
     const deletedEmployee = savedEmployees.find(emp => emp.id === id);
+    // Helps with filtered.
     const filtered = savedEmployees.filter(emp => emp.id !== id);
     localStorage.setItem('employees', JSON.stringify(filtered));
     await logAuditAction({

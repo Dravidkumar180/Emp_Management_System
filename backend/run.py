@@ -1,3 +1,4 @@
+"""Start the FastAPI development server for the backend application."""
 import uvicorn
 import sys
 import os

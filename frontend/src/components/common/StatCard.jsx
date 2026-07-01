@@ -1,6 +1,8 @@
+// Reusable stat card component.
 import React from 'react';
 import './StatCard.css';
 
+// Shows the stat card component.
 const StatCard = ({ title, value, icon, color, trend, trendValue }) => {
   return (
     <div className="stat-card" style={{ borderLeftColor: color }}>

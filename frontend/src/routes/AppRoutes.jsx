@@ -1,3 +1,4 @@
+// Sets up the app routes.
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
  
@@ -7,6 +8,7 @@ import Employees from '../pages/Employees';
 import Departments from '../pages/Departments';
 import Attendance from '../pages/Attendance';
 import Companies from '../pages/Companies';
+import HolidayCalendar from '../pages/HolidayCalendar';
 import Settings from '../pages/Settings';
 import Users from '../pages/Users';
 import RoleRequests from '../pages/RoleRequests';
@@ -14,6 +16,7 @@ import RoleRequests from '../pages/RoleRequests';
 import PrivateRoute from '../components/common/PrivateRoute';
 import Layout from '../layout/Layout';
  
+// Shows the app routes component.
 const AppRoutes = () => {
   return (
     <Routes>
@@ -36,6 +39,7 @@ const AppRoutes = () => {
         <Route path="/attendance" element={<PrivateRoute allowedRoles={['super_admin', 'admin', 'user']}><Attendance /></PrivateRoute>} />
         <Route path="/companies" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Companies /></PrivateRoute>} />
         <Route path="/users" element={<PrivateRoute allowedRoles={['super_admin', 'admin']}><Users /></PrivateRoute>} />
+        <Route path="/holiday-calendar" element={<PrivateRoute allowedRoles={['admin']}><HolidayCalendar /></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute allowedRoles={['user']}><Settings /></PrivateRoute>} />
         <Route path="/role-requests" element={<PrivateRoute allowedRoles={['admin']}><RoleRequests /></PrivateRoute>} />
       </Route>

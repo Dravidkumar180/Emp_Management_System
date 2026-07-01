@@ -1,6 +1,8 @@
+// Reusable loading skeleton component.
 import React from 'react';
 import './LoadingSkeleton.css';
 
+// Shows the loading skeleton component.
 const LoadingSkeleton = () => {
   return (
     <div className="skeleton-container">

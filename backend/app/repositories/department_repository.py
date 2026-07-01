@@ -1,26 +1,32 @@
+"""Reads and writes department data in the database."""
 from sqlalchemy.orm import Session
 from app.database.models import Department
 from typing import List, Optional
 
+# Defines the department repository class.
 class DepartmentRepository:
     """Repository for department operations (Bonus)"""
     
     @staticmethod
+    # Gets all records.
     def get_all(db: Session) -> List[Department]:
         """Get all departments"""
         return db.query(Department).all()
     
     @staticmethod
+    # Gets data by ID.
     def get_by_id(db: Session, department_id: int) -> Optional[Department]:
         """Get department by ID"""
         return db.query(Department).filter(Department.id == department_id).first()
     
     @staticmethod
+    # Gets data by name.
     def get_by_name(db: Session, name: str) -> Optional[Department]:
         """Get department by name"""
         return db.query(Department).filter(Department.name == name).first()
     
     @staticmethod
+    # Creates this file data.
     def create(db: Session, name: str, description: str = None) -> Department:
         """Create new department"""
         db_department = Department(name=name, description=description)
@@ -30,6 +36,7 @@ class DepartmentRepository:
         return db_department
     
     @staticmethod
+    # Updates this record.
     def update(db: Session, department_id: int, name: str = None, description: str = None) -> Optional[Department]:
         """Update department"""
         db_department = DepartmentRepository.get_by_id(db, department_id)
@@ -44,6 +51,7 @@ class DepartmentRepository:
         return db_department
     
     @staticmethod
+    # Deletes this record.
     def delete(db: Session, department_id: int) -> bool:
         """Delete department"""
         db_department = DepartmentRepository.get_by_id(db, department_id)
@@ -54,6 +62,7 @@ class DepartmentRepository:
         return True
     
     @staticmethod
+    # Runs init default departments.
     def init_default_departments(db: Session):
         """Initialize default departments"""
         default_departments = [

@@ -1,3 +1,4 @@
+"""Reads and writes init data in the database."""
 from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.department_repository import DepartmentRepository
 

@@ -1,3 +1,4 @@
+"""Stores sample data for local development."""
 from typing import List, Dict, Optional
 
 # Mock employee data
@@ -154,10 +155,12 @@ mock_employees = [
     }
 ]
 
+# Gets employees data.
 def get_employees() -> List[Dict]:
     """Get all employees"""
     return mock_employees
 
+# Gets employee by id data.
 def get_employee_by_id(employee_id: int) -> Optional[Dict]:
     """Get employee by ID"""
     for employee in mock_employees:
@@ -165,6 +168,7 @@ def get_employee_by_id(employee_id: int) -> Optional[Dict]:
             return employee
     return None
 
+# Creates employee data.
 def add_employee(employee_data: Dict) -> Dict:
     """Add new employee"""
     new_id = max([emp["id"] for emp in mock_employees]) + 1
@@ -176,6 +180,7 @@ def add_employee(employee_data: Dict) -> Dict:
     mock_employees.append(new_employee)
     return new_employee
 
+# Updates employee data.
 def update_employee(employee_id: int, update_data: Dict) -> Optional[Dict]:
     """Update employee"""
     for idx, employee in enumerate(mock_employees):
@@ -184,6 +189,7 @@ def update_employee(employee_id: int, update_data: Dict) -> Optional[Dict]:
             return mock_employees[idx]
     return None
 
+# Deletes employee data.
 def delete_employee(employee_id: int) -> bool:
     """Delete employee"""
     for idx, employee in enumerate(mock_employees):

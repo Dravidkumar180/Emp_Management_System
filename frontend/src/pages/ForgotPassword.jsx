@@ -1,9 +1,11 @@
+// Shows the forgot password page.
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { resetPassword } from '../services/auth';
 import ThemeToggle from '../components/common/ThemeToggle';
 import './Login.css';
 
+// Shows the forgot password component.
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,6 +14,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Handles submit actions.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

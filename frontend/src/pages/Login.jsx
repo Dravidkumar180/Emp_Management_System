@@ -1,3 +1,4 @@
+// Shows the login page.
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -5,6 +6,7 @@ import ThemeToggle from '../components/common/ThemeToggle';
 import { fetchPublicInvitation } from '../services/userInvitations';
 import './Login.css';
 
+// Shows the login component.
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
@@ -24,18 +26,25 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // Navigates based on the user role.
   const navigateByRole = (userData) => {
     if (userData?.is_active === false) {
       navigate('/account-deactivated');
       return;
     }
+    if (userData?.is_suspended === true) {
+      navigate('/account-suspended');
+      return;
+    }
     navigate(userData?.role === 'admin' ? '/users' : '/dashboard');
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     const token = searchParams.get('invite');
     if (!token) return;
 
+    // Gets invite data.
     const loadInvite = async () => {
       try {
         setInviteLoading(true);
@@ -60,6 +69,7 @@ const Login = () => {
     loadInvite();
   }, [searchParams]);
 
+  // Handles submit actions.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

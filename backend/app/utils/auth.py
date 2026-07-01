@@ -1,3 +1,4 @@
+"""Shared backend helper functions."""
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Optional
@@ -24,7 +25,9 @@ COMPANY_SLUG_TO_ID = {
 }
 
 
+# Helps with normalize company id.
 def normalize_company_id(company_id) -> Optional[int]:
+    """Runs normalize company ID logic."""
     if company_id is None or company_id == "":
         return None
     if isinstance(company_id, int):
@@ -42,6 +45,7 @@ def normalize_company_id(company_id) -> Optional[int]:
 
 # ========== JWT TOKEN FUNCTIONS ==========
 
+# Creates access token data.
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create JWT access token with company info
@@ -61,6 +65,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
+# Helps with ensure not suspended.
+def ensure_not_suspended(user: User) -> None:
+    """Block application access for suspended accounts while preserving login."""
+    if getattr(user, "is_suspended", False):
+        raise HTTPException(status_code=403, detail="Account suspended")
+
+
+# Helps with decode access token.
 def decode_access_token(token: str) -> Optional[dict]:
     """
     Decode JWT access token
@@ -78,6 +90,7 @@ def decode_access_token(token: str) -> Optional[dict]:
 
 # ========== AUTHENTICATION DEPENDENCIES ==========
 
+# Gets current user data.
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     """
     Get current user from token with company info
@@ -110,6 +123,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         db.close()
 
 
+# Gets current active user data.
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Check if current user is active
@@ -122,11 +136,13 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     """
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    ensure_not_suspended(current_user)
     return current_user
 
 
 # ========== ROLE-BASED ACCESS CONTROL ==========
 
+# Gets admin user data.
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Check if current user has admin role
@@ -139,11 +155,13 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
     """
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
+    ensure_not_suspended(current_user)
     if current_user.role not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
 
+# Gets super admin data.
 async def get_super_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Check if current user is super admin
@@ -156,11 +174,13 @@ async def get_super_admin(current_user: User = Depends(get_current_user)) -> Use
     """
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
+    ensure_not_suspended(current_user)
     if current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Super admin access required")
     return current_user
 
 
+# Gets company user data.
 async def get_company_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Check if current user belongs to a company
@@ -173,6 +193,7 @@ async def get_company_user(current_user: User = Depends(get_current_user)) -> Us
     """
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
+    ensure_not_suspended(current_user)
     if not current_user.company_id:
         raise HTTPException(status_code=403, detail="User does not belong to any company")
     return current_user
@@ -180,6 +201,7 @@ async def get_company_user(current_user: User = Depends(get_current_user)) -> Us
 
 # ========== COMPANY ISOLATION HELPER ==========
 
+# Gets current company id data.
 def get_current_company_id(
     request: Request,
     current_user: User = Depends(get_current_user)
@@ -197,6 +219,7 @@ def get_current_company_id(
 
     if not current_user.is_active:
         raise HTTPException(status_code=403, detail="Inactive user")
+    ensure_not_suspended(current_user)
 
     if company_id is None and current_user.role != "super_admin":
         raise HTTPException(status_code=403, detail="No company associated with user")
@@ -205,6 +228,7 @@ def get_current_company_id(
 
 # ========== TOKEN REFRESH FUNCTION ==========
 
+# Runs refresh access token.
 def refresh_access_token(refresh_token: str) -> Optional[str]:
     """
     Refresh access token (for extending session)
@@ -228,6 +252,7 @@ def refresh_access_token(refresh_token: str) -> Optional[str]:
 
 # ========== LOGIN HELPER ==========
 
+# Creates login response data.
 def create_login_response(user: User, company_id: Optional[int] = None) -> dict:
     """
     Create login response with access token

@@ -1,3 +1,5 @@
+/* Styles the users page. */
+/* Users styles the frontend/src/pages/Users.css interface. */
 .users-page {
   max-width: 1400px;
   margin: 0 auto;
@@ -10,7 +12,7 @@
 
 .users-header h1 {
   margin: 0 0 8px;
-  color: var(--text-primary);
+   color:black;
   font-size: 28px;
   font-weight: 700;
 }
@@ -19,6 +21,55 @@
   margin: 0;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+.suspension-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.suspension-stat {
+  display: grid;
+  gap: 5px;
+  min-height: 108px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.suspension-stat span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.suspension-stat strong {
+  color: #047857;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.suspension-stat small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.suspension-stat.warning strong {
+  color: #ea580c;
+}
+
+.suspension-stat.muted strong {
+  color: #64748b;
+}
+
+.suspension-stat.info strong {
+  color: #4f46e5;
 }
 
 .users-top-grid {
@@ -198,7 +249,11 @@
 }
 
 .members-table {
-  min-width: 820px;
+  min-width: 1040px;
+}
+
+.reinstatement-table {
+  min-width: 920px;
 }
 
 .users-table th {
@@ -253,6 +308,170 @@
   color: #9ca3af;
 }
 
+.member-status.suspended {
+  color: #ea580c;
+}
+
+.member-status.request-pending,
+.member-status:not(.active):not(.inactive):not(.suspended):not(.request-approved):not(.request-rejected) {
+  color: #ea580c;
+}
+
+.member-status.request-approved {
+  color: #047857;
+}
+
+.member-status.request-rejected {
+  color: #dc2626;
+}
+
+.suspension-reason-input {
+  width: min(100%, 260px);
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.suspension-reason-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.suspension-reason-input:disabled {
+  opacity: 0.55;
+}
+
+.suspension-reason-text {
+  display: inline-block;
+  max-width: 280px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.reinstatement-card {
+  margin-top: 24px;
+}
+
+.status-management-card {
+  margin-top: 24px;
+}
+
+.users-section-heading {
+  padding: 22px 24px 10px;
+}
+
+.users-section-heading h2 {
+  padding: 0;
+}
+
+.users-section-heading p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.reinstatement-history-tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--border);
+  margin: 0 24px 12px;
+  overflow-x: auto;
+}
+
+.reinstatement-history-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 0 0 10px;
+  white-space: nowrap;
+}
+
+.reinstatement-history-tabs button.active {
+  border-bottom-color: #2563eb;
+  color: #2563eb;
+}
+
+.request-status-pill,
+.status-guide-pill,
+.blocked-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0 10px;
+  text-transform: capitalize;
+}
+
+.request-status-pill.pending {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.request-status-pill.approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.request-status-pill.rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-guide-pill.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-guide-pill.suspended {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.status-guide-pill.deactivated {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.blocked-pill {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.yes-text {
+  color: #15803d !important;
+  font-weight: 800;
+}
+
+.no-text {
+  color: #dc2626 !important;
+  font-weight: 800;
+}
+
+.reinstatement-table td strong,
+.reinstatement-table td small {
+  display: block;
+}
+
+.reinstatement-table td small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .empty-table-cell {
   color: var(--text-secondary);
   text-align: center;
@@ -264,6 +483,10 @@
 }
 
 @media (max-width: 1100px) {
+  .suspension-stats {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
   .users-top-grid {
     grid-template-columns: 1fr;
   }
@@ -283,6 +506,10 @@
   }
 
   .invite-form {
+    grid-template-columns: 1fr;
+  }
+
+  .suspension-stats {
     grid-template-columns: 1fr;
   }
 

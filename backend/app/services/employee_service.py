@@ -1,12 +1,15 @@
+"""Runs business logic for employee."""
 from app.repositories.employee_repository import EmployeeRepository
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.database.database import SessionLocal
 from typing import List, Dict, Optional
 
+# Defines the employee service class.
 class EmployeeService:
     """Service layer for employee business logic"""
     
     @staticmethod
+    # Gets all employees data.
     def get_all_employees(company_id: int) -> List[Dict]:
         """Get all employees from database"""
         db = SessionLocal()
@@ -39,6 +42,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Gets employee by id data.
     def get_employee_by_id(employee_id: int, company_id: int) -> Optional[Dict]:
         """Get employee by ID from database"""
         db = SessionLocal()
@@ -70,6 +74,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Creates employee data.
     def create_employee(employee_data: Dict, company_id: int) -> Dict:
         """Create new employee in database"""
         db = SessionLocal()
@@ -109,6 +114,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Updates employee data.
     def update_employee(employee_id: int, update_data: Dict, company_id: int) -> Optional[Dict]:
         """Update employee in database"""
         db = SessionLocal()
@@ -149,6 +155,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Deletes employee data.
     def delete_employee(employee_id: int, company_id: int) -> bool:
         """Delete employee from database"""
         db = SessionLocal()
@@ -169,6 +176,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Gets department stats data.
     def get_department_stats(company_id: int) -> Dict:
         """Get department statistics from database"""
         db = SessionLocal()
@@ -181,6 +189,7 @@ class EmployeeService:
             db.close()
     
     @staticmethod
+    # Gets status stats data.
     def get_status_stats(company_id: int) -> Dict:
         """Get status statistics from database"""
         db = SessionLocal()

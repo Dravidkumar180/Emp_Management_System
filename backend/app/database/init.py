@@ -1,3 +1,4 @@
+"""Database setup files for the backend."""
 from app.database.mock_data import (
     mock_employees, 
     get_employees, 

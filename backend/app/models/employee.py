@@ -1,7 +1,9 @@
+"""Backend code for employee."""
 from pydantic import BaseModel, Field, validator
 from typing import Optional
 from datetime import datetime
 
+# Defines the employee class.
 class Employee(BaseModel):
     """Employee Model"""
     id: int
@@ -19,12 +21,14 @@ class Employee(BaseModel):
     avatar: str
     
     @validator('email')
+    # Helps with validate email.
     def validate_email(cls, v):
         """Simple email validation"""
         if '@' not in v or '.' not in v:
             raise ValueError('Invalid email format')
         return v
 
+# Defines the employee create class.
 class EmployeeCreate(BaseModel):
     """Model for creating a new employee"""
     name: str = Field(..., min_length=2, max_length=100)
@@ -36,11 +40,14 @@ class EmployeeCreate(BaseModel):
     location: Optional[str] = None
     
     @validator('email')
+    # Helps with validate email.
     def validate_email(cls, v):
+        """Runs validate email logic."""
         if '@' not in v or '.' not in v:
             raise ValueError('Invalid email format')
         return v
 
+# Defines the employee update class.
 class EmployeeUpdate(BaseModel):
     """Model for updating an employee"""
     name: Optional[str] = None
@@ -51,12 +58,14 @@ class EmployeeUpdate(BaseModel):
     phone: Optional[str] = None
     location: Optional[str] = None
 
+# Defines the employee response class.
 class EmployeeResponse(BaseModel):
     """Response model for employee operations"""
     success: bool
     message: str
     data: Optional[Employee] = None
 
+# Defines the employees list response class.
 class EmployeesListResponse(BaseModel):
     """Response model for employees list"""
     success: bool

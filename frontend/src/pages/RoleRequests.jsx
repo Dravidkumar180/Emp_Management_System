@@ -1,14 +1,17 @@
+// Shows the role requests page.
 import React, { useEffect, useState } from 'react';
 import { fetchPendingRoleRequests, approveRoleRequest, rejectRoleRequest } from '../services/auth';
 import { useNotifications } from '../context/NotificationContext';
 import './RoleRequests.css';
 
+// Shows the role requests component.
 const RoleRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const { addNotification } = useNotifications();
 
+  // Gets requests data.
   const loadRequests = async () => {
     setLoading(true);
     try {
@@ -21,10 +24,12 @@ const RoleRequests = () => {
     }
   };
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadRequests();
   }, []);
 
+  // Handles action actions.
   const handleAction = async (requestId, action) => {
     setActionLoading(true);
     try {

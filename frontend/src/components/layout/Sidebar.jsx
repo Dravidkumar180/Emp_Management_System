@@ -1,8 +1,10 @@
+// Builds the sidebar layout.
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
 
+// Shows the sidebar component.
 const Sidebar = () => {
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
@@ -96,6 +98,18 @@ const Sidebar = () => {
       roles: ['super_admin', 'admin']
     },
     {
+      path: '/export',
+      name: 'Data Export',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M4 17V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
+      roles: ['admin']
+    },
+    {
       path: '/tracking',
       name: 'Tracking',
       icon: (
@@ -123,6 +137,22 @@ const Sidebar = () => {
       ),
       roles: ['super_admin', 'admin']
     },
+    {
+      path: '/holiday-calendar',
+      name: 'Holiday Calendar',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M16 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>
+          <path d="M8 14H8.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M12 14H12.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M16 14H16.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      ),
+      roles: ['admin']
+    },
     { 
       path: '/settings', 
       name: 'Settings', 
@@ -144,11 +174,13 @@ const Sidebar = () => {
     item.roles.includes(user?.role || 'user')
   );
 
+  // Handles logout actions.
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  // Gets user name data.
   const getUserName = () => {
     if (user?.name) return user.name;
     if (user?.email) return user.email.split('@')[0];
@@ -164,11 +196,13 @@ const Sidebar = () => {
     return 'User';
   };
 
+  // Gets user initial data.
   const getUserInitial = () => {
     const name = getUserName();
     return name.charAt(0).toUpperCase();
   };
 
+  // Gets user role data.
   const getUserRole = () => {
     if (user?.role === 'super_admin') return 'Super Admin';
     if (user?.role === 'admin') return 'Administrator';

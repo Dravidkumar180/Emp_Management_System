@@ -1,3 +1,4 @@
+"""Runs business logic for auth."""
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate
 from app.utils.auth import verify_password, create_access_token
@@ -11,7 +12,9 @@ COMPANY_SLUG_TO_ID = {
     "company-b": 2,
 }
 
+# Helps with normalize company id.
 def normalize_company_id(company_id):
+    """Runs normalize company ID logic."""
     if company_id is None or company_id == "":
         return None
     if isinstance(company_id, int):
@@ -26,9 +29,13 @@ def normalize_company_id(company_id):
     except ValueError:
         return None
 
+# Defines the auth service class.
 class AuthService:
+    """Groups auth service helper functions."""
     @staticmethod
+    # Runs register.
     def register(user_data: dict):
+        """Runs register logic."""
         db = SessionLocal()
         try:
             print(f"[*] Registering user: {user_data.get('email')}")
@@ -78,7 +85,9 @@ class AuthService:
             db.close()
     
     @staticmethod
+    # Helps with login.
     def login(login_data: dict):
+        """Runs login logic."""
         db = SessionLocal()
         try:
             print(f"[*] Login attempt: {login_data.get('email')}")
@@ -115,6 +124,11 @@ class AuthService:
                     "role": user.role,
                     "company_id": final_company_id,
                     "is_active": user.is_active,
+                    "is_suspended": user.is_suspended,
+                    "suspension_reason": user.suspension_reason,
+                    "suspended_by_user_id": user.suspended_by_user_id,
+                    "suspended_by_name": user.suspended_by_name,
+                    "suspended_at": user.suspended_at.isoformat() if user.suspended_at else None,
                     "deactivated_by_user_id": user.deactivated_by_user_id,
                     "deactivated_by_name": user.deactivated_by_name,
                     "deactivated_at": user.deactivated_at.isoformat() if user.deactivated_at else None
@@ -130,7 +144,9 @@ class AuthService:
             db.close()
 
     @staticmethod
+    # Runs reset password.
     def reset_password(reset_data: dict):
+        """Runs reset password logic."""
         db = SessionLocal()
         try:
             print(f"[*] Password reset attempt: {reset_data.get('email')}")
@@ -155,7 +171,9 @@ class AuthService:
             db.close()
 
     @staticmethod
+    # Runs list admin reviewers.
     def list_admin_reviewers(company_id=None):
+        """Runs list admin reviewers logic."""
         db = SessionLocal()
         try:
             normalized_company_id = normalize_company_id(company_id)

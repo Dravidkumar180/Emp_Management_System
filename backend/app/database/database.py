@@ -1,3 +1,4 @@
+"""Sets up the database connection and session."""
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -22,6 +23,7 @@ Base = declarative_base()
 
 # Dependency to get database session
 def get_db():
+    """Returns db data."""
     db = SessionLocal()
     try:
         yield db

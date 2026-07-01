@@ -1,7 +1,10 @@
+// Reusable status badge component.
 import React from 'react';
 import './StatusBadge.css';
 
+// Shows the status badge component.
 const StatusBadge = ({ status }) => {
+  // Gets status class data.
   const getStatusClass = () => {
     switch(status?.toLowerCase()) {
       case 'active': return 'status-active';

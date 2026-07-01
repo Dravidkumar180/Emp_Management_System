@@ -1,3 +1,4 @@
+// Main frontend app setup.
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -13,15 +14,19 @@ import DepartmentTransfer from './pages/DepartmentTransfer';
 import Attendance from './pages/Attendance';
 import Companies from './pages/Companies';
 import AuditLogs from './pages/AuditLogs';
+import Export from './pages/Export';
 import Tracking from './pages/Tracking';
 import Users from './pages/Users';
+import HolidayCalendar from './pages/HolidayCalendar';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import AccountDeactivated from './pages/AccountDeactivated';
+import AccountSuspended from './pages/AccountSuspended';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.css';
 import './styles/App.css';
 
+// Shows the home redirect component.
 const HomeRedirect = () => {
   const { user, loading } = useAuth();
 
@@ -32,9 +37,12 @@ const HomeRedirect = () => {
   if (!user) return <Navigate to="/login" replace />;
   return user.is_active === false
     ? <Navigate to="/account-deactivated" replace />
+    : user.is_suspended === true
+    ? <Navigate to="/account-suspended" replace />
     : <Navigate to="/dashboard" replace />;
 };
 
+// Runs app.
 function App() {
   return (
     <ThemeProvider>
@@ -45,6 +53,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/account-deactivated" element={<AccountDeactivated />} />
+            <Route path="/account-suspended" element={<AccountSuspended />} />
             <Route path="/" element={<HomeRedirect />} />
             
             <Route path="/dashboard" element={
@@ -101,6 +110,14 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/export" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <Export />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/tracking" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
@@ -113,6 +130,14 @@ function App() {
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
                   <Users />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/holiday-calendar" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <HolidayCalendar />
                 </DashboardLayout>
               </ProtectedRoute>
             } />

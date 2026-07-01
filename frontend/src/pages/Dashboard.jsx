@@ -1,3 +1,4 @@
+// Shows the dashboard page.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getAllEmployees } from '../services/api';
@@ -8,6 +9,7 @@ import {
 } from 'recharts';
 import './Dashboard.css';
 
+// Shows the dashboard component.
 const Dashboard = () => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
@@ -44,10 +46,15 @@ const Dashboard = () => {
       
       // Calculate statistics
       const total = data.length;
+      // Prepares active.
       const active = data.filter(emp => emp.status === 'Active').length;
+      // Prepares remote.
       const remote = data.filter(emp => emp.status === 'Remote').length;
+      // Handles leave actions.
       const onLeave = data.filter(emp => emp.status === 'On Leave').length;
+      // Prepares inactive.
       const inactive = data.filter(emp => emp.status === 'Inactive').length;
+      // Prepares departments.
       const departments = [...new Set(data.map(emp => emp.department))].length;
       const attendanceRate = total > 0 ? Math.round((active / total) * 100) : 0;
       
@@ -66,6 +73,7 @@ const Dashboard = () => {
       data.forEach(emp => {
         deptMap[emp.department] = (deptMap[emp.department] || 0) + 1;
       });
+      // Prepares dept data.
       const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value }));
       setDepartmentData(deptData);
 
@@ -74,16 +82,19 @@ const Dashboard = () => {
       data.forEach(emp => {
         roleMap[emp.role] = (roleMap[emp.role] || 0) + 1;
       });
+      // Prepares role data array.
       const roleDataArray = Object.entries(roleMap).map(([name, value]) => ({ name, value }));
       setRoleData(roleDataArray);
       
       // Status distribution
       const statusMap = { Active: active, Inactive: inactive, 'On Leave': onLeave, Remote: remote };
+      // Prepares status data array.
       const statusDataArray = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
       setStatusData(statusDataArray);
       
       // Activity data (last 7 days simulation based on actual data)
       const activityDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      // Prepares activity sim.
       const activitySim = activityDays.map(day => ({
         day,
         present: Math.floor(Math.random() * active) + 10,
@@ -103,14 +114,17 @@ const Dashboard = () => {
     }
   }, []);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadDashboardData();
 
+    // Handles employees updated actions.
     const handleEmployeesUpdated = () => {
       loadDashboardData();
     };
     window.addEventListener('employeesUpdated', handleEmployeesUpdated);
     
+    // Prepares interval.
     const interval = setInterval(() => {
       loadDashboardData();
     }, 30000);
@@ -121,6 +135,7 @@ const Dashboard = () => {
     };
   }, [loadDashboardData]);
 
+  // Shows the custom tooltip component.
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const title = label || payload[0].name;

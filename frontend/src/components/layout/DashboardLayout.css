@@ -1,3 +1,5 @@
+/* Styles the dashboard layout component. */
+/* Dashboard Layout styles the frontend/src/components/layout/DashboardLayout.css interface. */
 .dashboard-layout {
   display: flex;
   min-height: 100vh;

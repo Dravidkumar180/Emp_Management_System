@@ -1,12 +1,17 @@
+"""Runs business logic for company."""
 from app.repositories.company_repository import CompanyRepository
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.database.database import SessionLocal
 from typing import List, Dict, Optional
 
+# Defines the company service class.
 class CompanyService:
+    """Groups company service helper functions."""
 
     @staticmethod
+    # Runs to dict.
     def _to_dict(company) -> Dict:
+        """Runs to dict logic."""
         return {
             "id": company.id,
             "name": company.name,
@@ -22,7 +27,9 @@ class CompanyService:
         }
     
     @staticmethod
+    # Gets all companies data.
     def get_all_companies() -> List[Dict]:
+        """Returns all companies data."""
         db = SessionLocal()
         try:
             companies = CompanyRepository.get_all(db)
@@ -31,7 +38,9 @@ class CompanyService:
             db.close()
     
     @staticmethod
+    # Gets user company data.
     def get_user_company(user_id: int) -> Optional[Dict]:
+        """Returns user company data."""
         db = SessionLocal()
         try:
             company = CompanyRepository.get_user_company(db, user_id)
@@ -42,7 +51,9 @@ class CompanyService:
             db.close()
     
     @staticmethod
+    # Creates company data.
     def create_company(company_data: dict) -> Dict:
+        """Create company records."""
         db = SessionLocal()
         try:
             company_create = CompanyCreate(**company_data)
@@ -52,7 +63,9 @@ class CompanyService:
             db.close()
     
     @staticmethod
+    # Updates company data.
     def update_company(company_id: int, update_data: dict) -> Optional[Dict]:
+        """Update company records."""
         db = SessionLocal()
         try:
             company_update = CompanyUpdate(**update_data)
@@ -64,7 +77,9 @@ class CompanyService:
             db.close()
     
     @staticmethod
+    # Deletes company data.
     def delete_company(company_id: int) -> bool:
+        """Delete company records."""
         db = SessionLocal()
         try:
             return CompanyRepository.delete(db, company_id)
@@ -72,7 +87,9 @@ class CompanyService:
             db.close()
     
     @staticmethod
+    # Gets company stats data.
     def get_company_stats(company_id: int) -> Dict:
+        """Returns company stats data."""
         db = SessionLocal()
         try:
             return CompanyRepository.get_company_stats(db, company_id)

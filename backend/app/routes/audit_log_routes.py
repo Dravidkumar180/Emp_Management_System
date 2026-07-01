@@ -1,3 +1,4 @@
+"""Defines API routes for audit log."""
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -9,7 +10,9 @@ from app.database.models import User
 router = APIRouter()
 
 
+# Defines the audit log create class.
 class AuditLogCreate(BaseModel):
+    """Groups audit log create helper functions."""
     action: str = Field(..., min_length=1, max_length=100)
     entity_type: str = Field(..., min_length=1, max_length=50)
     entity_id: Optional[int] = None
@@ -20,6 +23,7 @@ class AuditLogCreate(BaseModel):
 
 
 @router.get("/audit-logs")
+# Gets audit logs data.
 async def get_audit_logs(
     skip: int = Query(0, description="Number of records to skip"),
     limit: int = Query(100, description="Maximum records to return"),
@@ -40,6 +44,7 @@ async def get_audit_logs(
 
 
 @router.post("/audit-logs", status_code=201)
+# Creates audit log data.
 async def create_audit_log(
     log: AuditLogCreate,
     request: Request,
@@ -70,6 +75,7 @@ async def create_audit_log(
 
 
 @router.get("/audit-logs/recent")
+# Gets recent audit logs data.
 async def get_recent_audit_logs(
     limit: int = Query(10, description="Number of recent logs"),
     current_user: User = Depends(get_current_user),
@@ -82,6 +88,7 @@ async def get_recent_audit_logs(
 
 
 @router.get("/audit-logs/actions")
+# Gets unique actions data.
 async def get_unique_actions(company_id: int = Depends(get_current_company_id)):
     """
     Get all unique action types for filtering

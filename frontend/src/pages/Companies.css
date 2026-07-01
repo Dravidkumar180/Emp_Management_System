@@ -1,3 +1,4 @@
+/* Styles the companies page. */
 /* Companies Page */
 .companies-page {
   width: 100%;
@@ -69,7 +70,7 @@
 }
 
 .companies-intro strong {
-  color: var(--text-primary);
+   color:black;
 }
 
 /* Companies Table */

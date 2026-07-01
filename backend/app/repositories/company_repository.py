@@ -1,13 +1,16 @@
+"""Reads and writes company data in the database."""
 from sqlalchemy.orm import Session
 from app.database.models import Company, User, Employee
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from typing import List, Optional
 from datetime import datetime
 
+# Defines the company repository class.
 class CompanyRepository:
     """Repository for company database operations with multi-tenant support"""
     
     @staticmethod
+    # Gets all records.
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Company]:
         """
         Get all companies with pagination
@@ -21,6 +24,7 @@ class CompanyRepository:
         return db.query(Company).offset(skip).limit(limit).all()
     
     @staticmethod
+    # Gets data by ID.
     def get_by_id(db: Session, company_id: int) -> Optional[Company]:
         """
         Get company by ID
@@ -33,6 +37,7 @@ class CompanyRepository:
         return db.query(Company).filter(Company.id == company_id).first()
     
     @staticmethod
+    # Gets data by name.
     def get_by_name(db: Session, name: str) -> Optional[Company]:
         """
         Get company by name
@@ -45,6 +50,7 @@ class CompanyRepository:
         return db.query(Company).filter(Company.name == name).first()
     
     @staticmethod
+    # Gets data by slug.
     def get_by_slug(db: Session, slug: str) -> Optional[Company]:
         """
         Get company by slug (URL-friendly identifier)
@@ -57,6 +63,7 @@ class CompanyRepository:
         return db.query(Company).filter(Company.slug == slug).first()
     
     @staticmethod
+    # Gets user company data.
     def get_user_company(db: Session, user_id: int) -> Optional[Company]:
         """
         Get company for a specific user
@@ -72,6 +79,7 @@ class CompanyRepository:
         return None
     
     @staticmethod
+    # Gets all active data.
     def get_all_active(db: Session) -> List[Company]:
         """
         Get all active companies
@@ -83,6 +91,7 @@ class CompanyRepository:
         return db.query(Company).filter(Company.is_active == True).all()
     
     @staticmethod
+    # Creates this file data.
     def create(db: Session, company: CompanyCreate) -> Company:
         """
         Create new company
@@ -113,6 +122,7 @@ class CompanyRepository:
         return db_company
     
     @staticmethod
+    # Updates this record.
     def update(db: Session, company_id: int, company_update: CompanyUpdate) -> Optional[Company]:
         """
         Update existing company
@@ -142,6 +152,7 @@ class CompanyRepository:
         return db_company
     
     @staticmethod
+    # Deletes this record.
     def delete(db: Session, company_id: int) -> bool:
         """
         Delete company by ID
@@ -159,6 +170,7 @@ class CompanyRepository:
         return True
     
     @staticmethod
+    # Runs activate.
     def activate(db: Session, company_id: int) -> Optional[Company]:
         """
         Activate a company
@@ -179,6 +191,7 @@ class CompanyRepository:
         return db_company
     
     @staticmethod
+    # Runs deactivate.
     def deactivate(db: Session, company_id: int) -> Optional[Company]:
         """
         Deactivate a company
@@ -199,6 +212,7 @@ class CompanyRepository:
         return db_company
     
     @staticmethod
+    # Gets company stats data.
     def get_company_stats(db: Session, company_id: int) -> dict:
         """
         Get statistics for a specific company
@@ -244,6 +258,7 @@ class CompanyRepository:
         }
     
     @staticmethod
+    # Gets company users data.
     def get_company_users(db: Session, company_id: int) -> List[User]:
         """
         Get all users belonging to a company
@@ -256,6 +271,7 @@ class CompanyRepository:
         return db.query(User).filter(User.company_id == company_id).all()
     
     @staticmethod
+    # Gets company employees count data.
     def get_company_employees_count(db: Session, company_id: int) -> int:
         """
         Get total number of employees in a company

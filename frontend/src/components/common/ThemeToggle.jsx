@@ -1,6 +1,8 @@
+// Reusable theme toggle component.
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 
+// Shows the theme toggle component.
 const ThemeToggle = () => {
   const { darkMode, toggleDarkMode } = useTheme();
 

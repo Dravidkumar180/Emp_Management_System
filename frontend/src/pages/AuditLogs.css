@@ -1,3 +1,5 @@
+/* Styles the audit logs page. */
+/* Audit Logs styles the frontend/src/pages/AuditLogs.css interface. */
 .audit-logs-page {
     max-width: 1400px;
     margin: 0 auto;
@@ -11,7 +13,7 @@
 .audit-logs-header h1 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary);
+     color:black;
     margin-bottom: 8px;
 }
 

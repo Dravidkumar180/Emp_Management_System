@@ -1,11 +1,15 @@
+"""Reads and writes audit log data in the database."""
 from sqlalchemy.orm import Session
 from app.database.models import AuditLog
 from typing import List, Optional, Dict
 from datetime import datetime
 
+# Defines the audit log repository class.
 class AuditLogRepository:
+    """Groups audit log repository helper functions."""
     
     @staticmethod
+    # Creates this file data.
     def create(db: Session, log_data: Dict) -> AuditLog:
         """Create a new audit log entry"""
         audit_log = AuditLog(
@@ -30,6 +34,7 @@ class AuditLogRepository:
         return audit_log
     
     @staticmethod
+    # Gets all records.
     def get_all(db: Session, company_id: int = None, skip: int = 0, limit: int = 100) -> List[AuditLog]:
         """Get all audit logs with optional company filter"""
         query = db.query(AuditLog).order_by(AuditLog.created_at.desc())
@@ -38,6 +43,7 @@ class AuditLogRepository:
         return query.offset(skip).limit(limit).all()
     
     @staticmethod
+    # Gets recent data.
     def get_recent(db: Session, limit: int = 10, company_id: int = None) -> List[AuditLog]:
         """Get recent audit logs"""
         query = db.query(AuditLog).order_by(AuditLog.created_at.desc())
@@ -46,6 +52,7 @@ class AuditLogRepository:
         return query.limit(limit).all()
     
     @staticmethod
+    # Gets data by action.
     def get_by_action(db: Session, action: str, company_id: int = None) -> List[AuditLog]:
         """Get audit logs by action type"""
         query = db.query(AuditLog).filter(AuditLog.action == action).order_by(AuditLog.created_at.desc())

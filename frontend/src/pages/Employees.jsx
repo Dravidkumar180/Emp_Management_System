@@ -1,16 +1,101 @@
+// Shows the employees page.
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAllEmployees, createEmployee, updateEmployee, deleteEmployee } from '../services/api';
+import { logAuditAction } from '../services/audit';
 import { Toaster, toast } from 'react-hot-toast';
 import './Employees.css';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 
+const PROFILE_COMPLETION_THRESHOLD = 80;
+
+const PROFILE_FIELDS = [
+  { key: 'firstName', label: 'First Name' },
+  { key: 'lastName', label: 'Last Name' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone Number' },
+  { key: 'department', label: 'Department' },
+  { key: 'designation', label: 'Designation' },
+  { key: 'profilePicture', label: 'Profile Picture' },
+  { key: 'address', label: 'Address' },
+  { key: 'dateOfJoining', label: 'Date of Joining' },
+  { key: 'employeeId', label: 'Employee ID' }
+];
+
+// Prepares split employee name.
+const splitEmployeeName = (name = '') => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || '',
+    lastName: parts.slice(1).join(' ')
+  };
+};
+
+// Gets join date data.
+const getJoinDate = (employee = {}) => employee.joinDate || employee.join_date || '';
+
+// Gets profile values data.
+const getProfileValues = (employee = {}) => {
+  const { firstName, lastName } = splitEmployeeName(employee.name);
+  return {
+    firstName,
+    lastName,
+    email: employee.email,
+    phone: employee.phone,
+    department: employee.department,
+    designation: employee.role,
+    profilePicture: employee.avatar,
+    address: employee.location,
+    dateOfJoining: getJoinDate(employee),
+    employeeId: employee.id
+  };
+};
+
+// Checks has profile value.
+const hasProfileValue = (value) => value !== undefined && value !== null && String(value).trim() !== '';
+
+// Helps with calculate profile completion.
+const calculateProfileCompletion = (employee = {}) => {
+  const values = getProfileValues(employee);
+  // Prepares completed.
+  const completed = PROFILE_FIELDS.filter((field) => hasProfileValue(values[field.key]));
+  const missingFields = PROFILE_FIELDS
+    .filter((field) => !hasProfileValue(values[field.key]))
+    .map((field) => field.label);
+
+  return {
+    percentage: Math.round((completed.length / PROFILE_FIELDS.length) * 100),
+    missingFields
+  };
+};
+
+// Gets completion class data.
+const getCompletionClass = (percentage) => {
+  if (percentage === 100) return 'complete';
+  if (percentage < PROFILE_COMPLETION_THRESHOLD) return 'low';
+  return 'good';
+};
+
+// Checks is image avatar.
+const isImageAvatar = (avatar = '') => /^(https?:|data:image\/)/i.test(String(avatar).trim());
+
+// Helps with render avatar.
+const renderAvatar = (employee, className) => {
+  const avatar = employee?.avatar || employee?.name?.charAt(0)?.toUpperCase() || '?';
+  if (isImageAvatar(avatar)) {
+    return <img className={`${className} avatar-image`} src={avatar} alt={`${employee.name} profile`} />;
+  }
+  return <div className={className}>{avatar}</div>;
+};
+
+// Shows the employees component.
 const Employees = () => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [profileFilter, setProfileFilter] = useState('All Profiles');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -24,7 +109,10 @@ const Employees = () => {
     status: 'Active',
     phone: '',
     location: '',
-    joinDate: ''
+    joinDate: '',
+    avatar: '',
+    firstName: '',
+    lastName: ''
   });
   const [formErrors, setFormErrors] = useState({});
   const [savedDepartments, setSavedDepartments] = useState([]);
@@ -47,6 +135,7 @@ const Employees = () => {
     'Data'
   ];
 
+  // Gets saved departments data.
   const loadSavedDepartments = useCallback(() => {
     const departmentsFromStorage = JSON.parse(localStorage.getItem('departments') || '[]');
     setSavedDepartments(departmentsFromStorage);
@@ -67,10 +156,12 @@ const Employees = () => {
     }
   }, []);
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
     loadEmployees();
     loadSavedDepartments();
 
+    // Handles departments updated actions.
     const handleDepartmentsUpdated = () => {
       loadSavedDepartments();
     };
@@ -82,6 +173,7 @@ const Employees = () => {
     };
   }, [loadEmployees, loadSavedDepartments]);
 
+  // Prepares company employees.
   const companyEmployees = employees.filter(emp => (emp.companyId || 'company-a') === currentCompanyId);
 
   // Get unique departments from employees, saved departments, and defaults.
@@ -99,8 +191,27 @@ const Employees = () => {
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDept = departmentFilter === '' || departmentFilter === 'All Departments' || emp.department === departmentFilter;
-    return matchesSearch && matchesDept;
+    const completion = calculateProfileCompletion(emp).percentage;
+    const matchesProfile =
+      profileFilter === 'All Profiles' ||
+      (profileFilter === 'Incomplete Profiles' && completion < 100) ||
+      (profileFilter === 'Below Threshold' && completion < PROFILE_COMPLETION_THRESHOLD) ||
+      (profileFilter === 'Complete Profiles' && completion === 100);
+    return matchesSearch && matchesDept && matchesProfile;
   });
+
+  // Prepares profile stats.
+  const profileStats = companyEmployees.reduce((stats, emp) => {
+    const completion = calculateProfileCompletion(emp).percentage;
+    return {
+      total: stats.total + completion,
+      incomplete: stats.incomplete + (completion < 100 ? 1 : 0),
+      belowThreshold: stats.belowThreshold + (completion < PROFILE_COMPLETION_THRESHOLD ? 1 : 0)
+    };
+  }, { total: 0, incomplete: 0, belowThreshold: 0 });
+  const averageCompletion = companyEmployees.length
+    ? Math.round(profileStats.total / companyEmployees.length)
+    : 0;
 
   // Pagination
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
@@ -121,6 +232,7 @@ const Employees = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // Helps with reset form.
   const resetForm = () => {
     setFormData({
       name: '',
@@ -130,7 +242,10 @@ const Employees = () => {
       status: 'Active',
       phone: '',
       location: '',
-      joinDate: ''
+      joinDate: '',
+      avatar: '',
+      firstName: '',
+      lastName: ''
     });
     setFormErrors({});
   };
@@ -146,6 +261,7 @@ const Employees = () => {
 
   const { addNotification } = useNotifications();
 
+  // Handles status change actions.
   const handleStatusChange = async (employee, status) => {
     try {
       await updateEmployee(employee.id, { ...employee, status });
@@ -176,6 +292,7 @@ const Employees = () => {
         phone: formData.phone || '',
         location: formData.location || '',
         joinDate: formData.joinDate || new Date().toISOString().split('T')[0],
+        avatar: formData.avatar || formData.name.charAt(0).toUpperCase(),
         companyId: currentCompanyId
       };
       await createEmployee(employeeToAdd);
@@ -195,25 +312,66 @@ const Employees = () => {
 
   // Edit employee
   const handleEditClick = (employee) => {
+    const { firstName, lastName } = splitEmployeeName(employee.name);
     setSelectedEmployee(employee);
     setFormData({
       name: employee.name,
+      firstName,
+      lastName,
       email: employee.email,
       role: employee.role,
       department: employee.department,
       status: employee.status,
       phone: employee.phone || '',
       location: employee.location || '',
-      joinDate: employee.joinDate || ''
+      joinDate: getJoinDate(employee),
+      avatar: employee.avatar || ''
     });
     setShowEditModal(true);
   };
 
+  // Handles update employee actions.
   const handleUpdateEmployee = async () => {
     if (!validateForm()) return;
     
     try {
-      await updateEmployee(selectedEmployee.id, formData);
+      const updatedEmployeeData = {
+        ...selectedEmployee,
+        name: `${formData.firstName} ${formData.lastName}`.trim() || formData.name,
+        email: formData.email,
+        role: formData.role,
+        department: formData.department,
+        status: formData.status,
+        phone: formData.phone,
+        location: formData.location,
+        joinDate: formData.joinDate,
+        avatar: formData.avatar || formData.firstName?.charAt(0).toUpperCase() || selectedEmployee.avatar
+      };
+      const oldCompletion = calculateProfileCompletion(selectedEmployee).percentage;
+      const newCompletion = calculateProfileCompletion(updatedEmployeeData).percentage;
+
+      await updateEmployee(selectedEmployee.id, updatedEmployeeData);
+      if (oldCompletion !== newCompletion) {
+        await logAuditAction({
+          action: 'Profile Completion Score Changed',
+          entityType: 'employee',
+          entityId: selectedEmployee.id,
+          entityName: updatedEmployeeData.name,
+          details: `${updatedEmployeeData.name} profile completion changed from ${oldCompletion}% to ${newCompletion}%`,
+          oldValue: { profileCompletion: oldCompletion },
+          newValue: { profileCompletion: newCompletion }
+        });
+      }
+      if (oldCompletion < 100 && newCompletion === 100) {
+        await logAuditAction({
+          action: 'Profile Reached 100% Completion',
+          entityType: 'employee',
+          entityId: selectedEmployee.id,
+          entityName: updatedEmployeeData.name,
+          details: `${updatedEmployeeData.name} reached 100% profile completion`,
+          newValue: { profileCompletion: newCompletion }
+        });
+      }
       await loadEmployees();
       setShowEditModal(false);
       setSelectedEmployee(null);
@@ -222,7 +380,21 @@ const Employees = () => {
       
       // 🟢 Notify dashboard about the change
       notifyDashboardUpdate();
-      addNotification({ type: 'success', title: 'Employee Updated', message: `${formData.name} updated` });
+      addNotification({ type: 'success', title: 'Employee Updated', message: `${updatedEmployeeData.name} updated` });
+      if (newCompletion < PROFILE_COMPLETION_THRESHOLD) {
+        addNotification({
+          type: 'warning',
+          title: 'Profile Completion Alert',
+          message: `${updatedEmployeeData.name} is below ${PROFILE_COMPLETION_THRESHOLD}% profile completion`
+        });
+      }
+      if (oldCompletion < 100 && newCompletion === 100) {
+        addNotification({
+          type: 'success',
+          title: 'Profile Complete',
+          message: `${updatedEmployeeData.name} reached 100% profile completion`
+        });
+      }
       
     } catch (error) {
       toast.error('Failed to update employee');
@@ -248,6 +420,7 @@ const Employees = () => {
     }
   };
 
+  // Handles page change actions.
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
@@ -274,6 +447,14 @@ const Employees = () => {
         <p className="db-status">Total: {companyEmployees.length} employees in {currentCompanyName}</p>
       </div>
 
+      <div className="profile-summary">
+        <div>
+          <strong>Profile Completion: {averageCompletion}%</strong>
+          <p>{profileStats.belowThreshold} employee(s) are below the {PROFILE_COMPLETION_THRESHOLD}% readiness threshold.</p>
+        </div>
+        <span>Complete profiles improve account readiness.</span>
+      </div>
+
       {/* Search Bar */}
       <div className="search-bar">
         <input
@@ -289,20 +470,38 @@ const Employees = () => {
 
       {/* Filter and Add Button */}
       <div className="filter-add-row">
-        <div className="departments-filter">
-          <label>Department:</label>
-          <select 
-            value={departmentFilter} 
-            onChange={(e) => {
-              setDepartmentFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="dept-select"
-          >
-            {departments.map(dept => (
-              <option key={dept}>{dept}</option>
-            ))}
-          </select>
+        <div className="filter-controls">
+          <div className="departments-filter">
+            <label>Department:</label>
+            <select 
+              value={departmentFilter} 
+              onChange={(e) => {
+                setDepartmentFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="dept-select"
+            >
+              {departments.map(dept => (
+                <option key={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+          <div className="departments-filter">
+            <label>Profile:</label>
+            <select
+              value={profileFilter}
+              onChange={(e) => {
+                setProfileFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="dept-select"
+            >
+              <option>All Profiles</option>
+              <option>Incomplete Profiles</option>
+              <option>Below Threshold</option>
+              <option>Complete Profiles</option>
+            </select>
+          </div>
         </div>
         <button className="add-btn-top" onClick={() => setShowAddModal(true)}>
           + Add Employee
@@ -319,6 +518,7 @@ const Employees = () => {
                 <th>EMPLOYEE</th>
                 <th>ROLE</th>
                 <th>DEPARTMENT</th>
+                <th>PROFILE</th>
                 <th>STATUS</th>
                 <th>ACTIONS</th>
               </tr>
@@ -326,16 +526,20 @@ const Employees = () => {
             <tbody>
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>
                     No employees found
                     </td>
                 </tr>
               ) : (
                 paginatedEmployees.map(emp => (
                   <tr key={emp.id} onClick={() => setSelectedEmployee(emp)}>
+                    {(() => {
+                      const profile = calculateProfileCompletion(emp);
+                      return (
+                        <>
                     <td>
                       <div className="employee-cell">
-                        <div className="employee-avatar">{emp.avatar}</div>
+                        {renderAvatar(emp, 'employee-avatar')}
                         <div>
                           <div className="employee-name">{emp.name}</div>
                           <div className="employee-email">{emp.email}</div>
@@ -344,6 +548,17 @@ const Employees = () => {
                     </td>
                     <td>{emp.role}</td>
                     <td>{emp.department}</td>
+                    <td>
+                      <div className="profile-cell">
+                        <span className={`completion-pill ${getCompletionClass(profile.percentage)}`}>{profile.percentage}%</span>
+                        <div className="mini-progress" aria-label={`Profile completion ${profile.percentage}%`}>
+                          <span style={{ width: `${profile.percentage}%` }}></span>
+                        </div>
+                        {profile.missingFields.length > 0 && (
+                          <small>{profile.missingFields.length} missing</small>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       {statusEditingId === emp.id ? (
                         <select
@@ -396,6 +611,9 @@ const Employees = () => {
                         🗑️
                       </button>
                     </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))
               )}
@@ -455,12 +673,39 @@ const Employees = () => {
             </div>
 
             <div className="details-avatar">
-              <div className="avatar-large">{selectedEmployee.avatar}</div>
+              {renderAvatar(selectedEmployee, 'avatar-large')}
               <h2>{selectedEmployee.name}</h2>
               <p>{selectedEmployee.role}</p>
             </div>
 
             <div className="details-section">
+              {(() => {
+                const profile = calculateProfileCompletion(selectedEmployee);
+                return (
+                  <div className="profile-details-card">
+                    <div className="profile-details-header">
+                      <span>Profile Completion</span>
+                      <strong>{profile.percentage}%</strong>
+                    </div>
+                    <div className="profile-progress">
+                      <span style={{ width: `${profile.percentage}%` }}></span>
+                    </div>
+                    <p>Complete your profile to improve account readiness.</p>
+                    {profile.missingFields.length > 0 ? (
+                      <div className="missing-info">
+                        <strong>Missing Information:</strong>
+                        <ul>
+                          {profile.missingFields.map((field) => (
+                            <li key={field}>{field}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="profile-complete-note">All required profile information is complete.</p>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="detail-row">
                 <label>ID</label>
                 <span>{selectedEmployee.id}</span>
@@ -485,10 +730,10 @@ const Employees = () => {
               </div>
               <div className="detail-row">
                 <label>JOIN DATE</label>
-                <span>{selectedEmployee.joinDate}</span>
+                <span>{getJoinDate(selectedEmployee) || 'N/A'}</span>
               </div>
               <div className="detail-row">
-                <label>LOCATION</label>
+                <label>ADDRESS</label>
                 <span>{selectedEmployee.location || 'N/A'}</span>
               </div>
             </div>
@@ -618,19 +863,23 @@ const Employees = () => {
               <button className="modal-close" onClick={() => { setShowEditModal(false); resetForm(); }}>×</button>
             </div>
             <div className="modal-body">
-              <div className="form-group"><label>Full Name</label><input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className={formErrors.name ? 'error' : ''} />{formErrors.name && <span className="error-text">{formErrors.name}</span>}</div>
-              <div className="form-group"><label>Email</label><input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className={formErrors.email ? 'error' : ''} />{formErrors.email && <span className="error-text">{formErrors.email}</span>}</div>
-              <div className="form-group"><label>Role</label><input value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className={formErrors.role ? 'error' : ''} />{formErrors.role && <span className="error-text">{formErrors.role}</span>}</div>
+              <div className="form-group"><label>Employee ID</label><input value={selectedEmployee?.id || ''} readOnly /></div>
+              <div className="form-group"><label>First Name</label><input value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value, name: `${e.target.value} ${formData.lastName}`.trim()})} className={formErrors.name ? 'error' : ''} />{formErrors.name && <span className="error-text">{formErrors.name}</span>}</div>
+              <div className="form-group"><label>Last Name</label><input value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value, name: `${formData.firstName} ${e.target.value}`.trim()})} /></div>
+              <div className="form-group"><label>Email</label><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className={formErrors.email ? 'error' : ''} />{formErrors.email && <span className="error-text">{formErrors.email}</span>}</div>
+              <div className="form-group"><label>Phone Number</label><input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></div>
               <div className="form-group"><label>Department</label><select value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}>
                 {departmentOptions.map((department) => (
                   <option key={department} value={department}>{department}</option>
                 ))}
               </select></div>
+              <div className="form-group"><label>Designation</label><input value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className={formErrors.role ? 'error' : ''} />{formErrors.role && <span className="error-text">{formErrors.role}</span>}</div>
+              <div className="form-group"><label>Profile Picture</label><input value={formData.avatar} onChange={(e) => setFormData({...formData, avatar: e.target.value})} placeholder="Initials, image URL, or avatar text" /></div>
+              <div className="form-group"><label>Address</label><input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} /></div>
+              <div className="form-group"><label>Date of Joining</label><input type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} /></div>
               <div className="form-group"><label>Status</label><select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                 <option>Active</option><option>Remote</option><option>On Leave</option><option>Inactive</option>
               </select></div>
-              <div className="form-group"><label>Phone</label><input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></div>
-              <div className="form-group"><label>Location</label><input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} /></div>
             </div>
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => { setShowEditModal(false); resetForm(); }}>Cancel</button>

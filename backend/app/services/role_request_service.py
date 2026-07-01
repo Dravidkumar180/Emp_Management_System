@@ -1,12 +1,17 @@
+"""Runs business logic for role request."""
 from app.repositories.user_repository import UserRepository
 from app.repositories.role_request_repository import RoleRequestRepository
 from app.utils.auth import verify_password
 from app.database.database import SessionLocal
 from datetime import datetime
 
+# Defines the role request service class.
 class RoleRequestService:
+    """Groups role request service helper functions."""
     @staticmethod
+    # Creates role request data.
     def create_role_request(requester_email: str, current_password: str, admin_email: str):
+        """Create role request records."""
         db = SessionLocal()
         try:
             requester = UserRepository.get_by_email(db, requester_email)
@@ -40,7 +45,9 @@ class RoleRequestService:
             db.close()
 
     @staticmethod
+    # Gets user requests data.
     def get_user_requests(requester_email: str):
+        """Returns user requests data."""
         db = SessionLocal()
         try:
             normalized_requester_email = requester_email.strip().lower()
@@ -52,7 +59,9 @@ class RoleRequestService:
             db.close()
 
     @staticmethod
+    # Gets pending requests data.
     def get_pending_requests(admin_email: str):
+        """Returns pending requests data."""
         db = SessionLocal()
         try:
             normalized_admin_email = admin_email.strip().lower()
@@ -65,7 +74,9 @@ class RoleRequestService:
             db.close()
 
     @staticmethod
+    # Runs approve request.
     def approve_request(request_id: int, admin_email: str):
+        """Runs approve request logic."""
         db = SessionLocal()
         try:
             normalized_admin_email = admin_email.strip().lower()
@@ -96,7 +107,9 @@ class RoleRequestService:
             db.close()
 
     @staticmethod
+    # Runs reject request.
     def reject_request(request_id: int, admin_email: str):
+        """Runs reject request logic."""
         db = SessionLocal()
         try:
             normalized_admin_email = admin_email.strip().lower()

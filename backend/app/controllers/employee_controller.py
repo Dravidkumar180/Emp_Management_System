@@ -1,3 +1,4 @@
+"""Handles employee requests."""
 from typing import List, Dict
 from fastapi import HTTPException, Request
 from app.services.employee_service import EmployeeService
@@ -5,10 +6,12 @@ from app.utils.audit_helper import log_action
 from app.database.models import User
 
 
+# Defines the employee controller class.
 class EmployeeController:
     """Controller layer for employee operations"""
     
     @staticmethod
+    # Gets all employees data.
     def get_all_employees(current_user: User) -> List[Dict]:
         """Get all employees"""
         employees = EmployeeService.get_all_employees(current_user.company_id)
@@ -17,6 +20,7 @@ class EmployeeController:
         return employees
     
     @staticmethod
+    # Gets employee data.
     def get_employee(employee_id: int, current_user: User) -> Dict:
         """Get employee by ID"""
         employee = EmployeeService.get_employee_by_id(employee_id, current_user.company_id)
@@ -25,6 +29,7 @@ class EmployeeController:
         return employee
     
     @staticmethod
+    # Creates employee data.
     def create_employee(employee_data: Dict, request: Request = None, current_user: User = None) -> Dict:
         """Create new employee with audit log"""
         if not employee_data.get("name") or not employee_data.get("email"):
@@ -51,6 +56,7 @@ class EmployeeController:
         return new_employee
     
     @staticmethod
+    # Updates employee data.
     def update_employee(employee_id: int, update_data: Dict, request: Request = None, current_user: User = None) -> Dict:
         """Update employee with audit log"""
         # Get old employee data for audit
@@ -91,6 +97,7 @@ class EmployeeController:
         return employee
     
     @staticmethod
+    # Deletes employee data.
     def delete_employee(employee_id: int, request: Request = None, current_user: User = None) -> Dict:
         """Delete employee with audit log"""
         # Get employee data before deletion for audit
@@ -119,11 +126,13 @@ class EmployeeController:
         return {"message": "Employee deleted successfully"}
     
     @staticmethod
+    # Gets department stats data.
     def get_department_stats(current_user: User) -> Dict:
         """Get department statistics"""
         return EmployeeService.get_department_stats(current_user.company_id)
     
     @staticmethod
+    # Gets status stats data.
     def get_status_stats(current_user: User) -> Dict:
         """Get status statistics"""
         return EmployeeService.get_status_stats(current_user.company_id)

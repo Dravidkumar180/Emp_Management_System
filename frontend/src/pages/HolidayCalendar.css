@@ -1,0 +1,692 @@
+/* Styles the holiday calendar page. */
+.holiday-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.holiday-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.holiday-header h1 {
+  color:black;
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+
+.holiday-header p,
+.holiday-company-card p,
+.holiday-insights p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.holiday-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.holiday-stat-card,
+.holiday-company-card,
+.holiday-table-card,
+.holiday-insights > div {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.holiday-stat-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.holiday-stat-card span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.holiday-stat-card strong {
+  color: var(--text-primary);
+  font-size: 28px;
+}
+
+.holiday-stat-card small {
+  color: #2563eb;
+  font-size: 12px;
+}
+
+.holiday-company-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.holiday-company-card label,
+.holiday-form label {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: 13px;
+  gap: 7px;
+}
+
+.holiday-company-card select,
+.holiday-toolbar input,
+.holiday-toolbar select,
+.holiday-form input,
+.holiday-form select,
+.holiday-form textarea {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 10px 12px;
+}
+
+.holiday-company-card select {
+  max-width: 260px;
+}
+
+.holiday-table-card {
+  overflow-x: auto;
+  padding: 16px;
+}
+
+.holiday-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(130px, 170px)) minmax(180px, auto);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.holiday-date-range {
+  align-items: center;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.holiday-table {
+  border-collapse: collapse;
+  min-width: 880px;
+  width: 100%;
+}
+
+.holiday-table th {
+  background: var(--table-header);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 13px 12px;
+  text-align: left;
+}
+
+.holiday-table td {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 13px 12px;
+  vertical-align: top;
+}
+
+.holiday-table td strong,
+.holiday-table td span {
+  display: block;
+}
+
+.holiday-table td span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.holiday-type,
+.holiday-status {
+  border-radius: 999px;
+  display: inline-block !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  margin: 0 !important;
+  padding: 4px 9px;
+  width: fit-content;
+}
+
+.holiday-type.public-holiday {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.holiday-type.company-holiday {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.holiday-type.optional-holiday {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.holiday-status {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.holiday-empty {
+  color: var(--text-secondary) !important;
+  padding: 34px !important;
+  text-align: center;
+}
+
+.holiday-table-footer {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding-top: 14px;
+}
+
+.holiday-pagination {
+  display: flex;
+  gap: 6px;
+}
+
+.holiday-pagination button {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 32px;
+  min-width: 32px;
+}
+
+.holiday-pagination button.active,
+.holiday-pagination button:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.holiday-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.holiday-primary-btn,
+.holiday-secondary-btn,
+.holiday-danger-btn,
+.holiday-icon-btn {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.holiday-primary-btn {
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 16px;
+}
+
+.holiday-secondary-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 10px 16px;
+}
+
+.holiday-danger-btn {
+  background: #dc2626;
+  color: #fff;
+  padding: 10px 16px;
+}
+
+.holiday-icon-btn {
+  background: #eff6ff;
+  color: #1d4ed8;
+  margin-right: 8px;
+  padding: 7px 10px;
+}
+
+.holiday-icon-btn.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.holiday-insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.holiday-insights > div {
+  padding: 16px;
+}
+
+.holiday-insights h2 {
+  color: var(--text-primary);
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.holiday-calendar-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.5fr) minmax(240px, 0.8fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.holiday-calendar-card,
+.holiday-side-card,
+.holiday-list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.calendar-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.calendar-toolbar button,
+.calendar-toggle button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+.calendar-toolbar strong {
+  color: var(--text-primary);
+  min-width: 135px;
+  text-align: center;
+}
+
+.calendar-toggle {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.calendar-toggle button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.calendar-board {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(42px, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.calendar-day-name,
+.calendar-cell {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  min-height: 54px;
+  padding: 8px;
+}
+
+.calendar-day-name {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  min-height: auto;
+}
+
+.calendar-cell {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calendar-cell.muted {
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+
+.calendar-cell i,
+.holiday-legend-row i,
+.compact-holiday i,
+.holiday-list-item i {
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+i.public-holiday {
+  background: #16a34a;
+}
+
+i.company-holiday {
+  background: #2563eb;
+}
+
+i.optional-holiday {
+  background: #7c3aed;
+}
+
+.holiday-side-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.holiday-side-card h2,
+.holiday-list-card h2 {
+  color: var(--text-primary);
+  font-size: 15px;
+  margin: 4px 0;
+}
+
+.holiday-legend-row,
+.compact-holiday {
+  align-items: center;
+  color: var(--text-secondary);
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.compact-holiday {
+  align-items: start;
+  grid-template-columns: 12px 90px 1fr;
+}
+
+.compact-holiday strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.holiday-list-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.holiday-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.holiday-tabs button {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 9px 12px;
+}
+
+.holiday-tabs button.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.holiday-list-card select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 10px 12px;
+}
+
+.holiday-list-items {
+  display: grid;
+  gap: 10px;
+}
+
+.holiday-list-item {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr auto auto;
+  padding: 12px;
+}
+
+.holiday-list-item > div {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 12px 95px 1fr;
+}
+
+.holiday-list-item span,
+.holiday-list-item small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.holiday-list-item strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.holiday-validation-box,
+.recurring-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.holiday-validation-box strong {
+  color: var(--text-primary);
+}
+
+.holiday-validation-box span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.holiday-validation-box span::before {
+  color: #16a34a;
+  content: "✓";
+  font-weight: 800;
+  margin-right: 8px;
+}
+
+.recurring-preview label {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.recurring-preview input {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 9px 10px;
+}
+
+.recurring-preview p {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #166534;
+  padding: 10px;
+}
+
+.applied-years-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.applied-years-table td {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 10px 8px;
+}
+
+.holiday-modal-overlay {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.58);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 20px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+}
+
+.holiday-modal,
+.holiday-delete-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  max-height: 90vh;
+  overflow-y: auto;
+  width: min(560px, 100%);
+}
+
+.holiday-modal-header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.holiday-modal-header h2,
+.holiday-delete-modal h2 {
+  color: var(--text-primary);
+  font-size: 18px;
+  margin: 0;
+}
+
+.holiday-modal-header button {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.holiday-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.holiday-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.holiday-form .error {
+  border-color: #dc2626;
+}
+
+.holiday-form small {
+  color: #dc2626;
+}
+
+.holiday-error-box {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+  padding: 12px;
+}
+
+.holiday-checkbox {
+  align-items: center;
+  display: flex !important;
+  gap: 9px !important;
+}
+
+.holiday-checkbox input {
+  width: auto;
+}
+
+.holiday-modal-footer {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 20px;
+}
+
+.holiday-delete-modal {
+  padding: 32px;
+  text-align: center;
+}
+
+.holiday-delete-modal p {
+  color: var(--text-primary);
+  margin: 16px 0 8px;
+}
+
+.holiday-delete-modal span {
+  color: var(--text-secondary);
+  display: block;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.holiday-warning-icon {
+  align-items: center;
+  background: #f59e0b;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 26px;
+  font-weight: 900;
+  height: 62px;
+  justify-content: center;
+  margin-bottom: 18px;
+  width: 62px;
+}
+
+@media (max-width: 900px) {
+  .holiday-header,
+  .holiday-modal-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .holiday-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .holiday-calendar-grid,
+  .holiday-list-item {
+    grid-template-columns: 1fr;
+  }
+}

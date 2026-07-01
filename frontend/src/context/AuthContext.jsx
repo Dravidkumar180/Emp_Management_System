@@ -1,3 +1,4 @@
+// Shares auth context data across the app.
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, registerUser, getCurrentUser } from '../services/auth';
 import { recordLoginActivity, recordLogoutActivity, recordSignupActivity } from '../services/activityTracking';
@@ -8,30 +9,36 @@ const AuthContext = createContext();
 
 const COMPANY_STORAGE_KEY = 'userCompanies';
 
+// Helps with normalize email.
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+// Helps with normalize company id.
 const normalizeCompanyId = (companyId) => {
   if (companyId === 1 || companyId === '1') return 'company-a';
   if (companyId === 2 || companyId === '2') return 'company-b';
   return companyId || 'company-a';
 };
 
+// Gets stored user company data.
 const getStoredUserCompany = (email) => {
   const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
   return userCompanies[normalizeEmail(email)] || 'company-a';
 };
 
+// Gets saved user company data.
 const getSavedUserCompany = (email) => {
   const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
   return userCompanies[normalizeEmail(email)];
 };
 
+// Saves user company data.
 const saveUserCompany = (email, companyId) => {
   const userCompanies = JSON.parse(localStorage.getItem(COMPANY_STORAGE_KEY) || '{}');
   userCompanies[normalizeEmail(email)] = companyId;
   localStorage.setItem(COMPANY_STORAGE_KEY, JSON.stringify(userCompanies));
 };
 
+// Prepares with company.
 const withCompany = (userData, fallbackEmail) => {
   const email = userData?.email || fallbackEmail;
   const companyId = normalizeCompanyId(userData?.companyId || userData?.company_id || getStoredUserCompany(email));
@@ -46,12 +53,15 @@ const withCompany = (userData, fallbackEmail) => {
   };
 };
 
+// Shows the auth provider component.
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const { refreshNotificationScope } = useNotifications();
 
+  // Runs when this screen needs to update data.
   useEffect(() => {
+    // Prepares check auth.
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
       if (token) {
@@ -70,6 +80,7 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Prepares login.
   const login = async (email, password, companyId) => {
     try {
       const response = await loginUser(email, password, companyId || getSavedUserCompany(email));
@@ -102,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Prepares register.
   const register = async (name, email, password, role = 'user', companyId = 'company-a', inviteToken = null) => {
     try {
       const response = await registerUser(name, email, password, role, companyId, inviteToken);
@@ -135,6 +147,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Prepares logout.
   const logout = () => {
     const savedUser = user || JSON.parse(localStorage.getItem('user') || 'null');
     const activity = recordLogoutActivity(savedUser);
@@ -157,6 +170,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Prepares refresh user.
   const refreshUser = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return null;
@@ -168,6 +182,7 @@ export const AuthProvider = ({ children }) => {
     return userWithCompany;
   }, []);
 
+  // Checks has role.
   const hasRole = (role) => {
     return user?.role === role;
   };
@@ -179,4 +194,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Provides auth.
 export const useAuth = () => useContext(AuthContext);

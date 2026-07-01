@@ -1,5 +1,7 @@
+"""Shared backend helper functions."""
 from typing import Dict, Any
 
+# Helps with format response.
 def format_response(success: bool, message: str, data: Any = None) -> Dict:
     """Format API response"""
     response = {
@@ -10,6 +12,7 @@ def format_response(success: bool, message: str, data: Any = None) -> Dict:
         response["data"] = data
     return response
 
+# Helps with validate email.
 def validate_email(email: str) -> bool:
     """Validate email format"""
     import re

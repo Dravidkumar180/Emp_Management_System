@@ -1,3 +1,4 @@
+// Connects the frontend to auth API features.
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -46,6 +47,7 @@ export const loginUser = async (email, password, companyId = 'company-a') => {
   }
 };
 
+// Helps with reset password.
 export const resetPassword = async (email, password) => {
   try {
     const response = await api.post('/auth/forgot-password', {
@@ -75,6 +77,7 @@ export const getCurrentUser = async (token) => {
   }
 };
 
+// Coordinates submit role change request behavior.
 export const submitRoleChangeRequest = async (currentPassword, adminEmail) => {
   try {
     const token = localStorage.getItem('token');
@@ -100,6 +103,7 @@ export const submitRoleChangeRequest = async (currentPassword, adminEmail) => {
   }
 };
 
+// Gets pending role requests data.
 export const fetchPendingRoleRequests = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -115,6 +119,7 @@ export const fetchPendingRoleRequests = async () => {
   }
 };
 
+// Gets my role requests data.
 export const fetchMyRoleRequests = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -130,6 +135,7 @@ export const fetchMyRoleRequests = async () => {
   }
 };
 
+// Gets admin reviewers data.
 export const fetchAdminReviewers = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -145,6 +151,7 @@ export const fetchAdminReviewers = async () => {
   }
 };
 
+// Prepares approve role request.
 export const approveRoleRequest = async (requestId) => {
   try {
     const token = localStorage.getItem('token');
@@ -162,6 +169,7 @@ export const approveRoleRequest = async (requestId) => {
   }
 };
 
+// Prepares reject role request.
 export const rejectRoleRequest = async (requestId) => {
   try {
     const token = localStorage.getItem('token');
@@ -179,6 +187,7 @@ export const rejectRoleRequest = async (requestId) => {
   }
 };
 
+// Coordinates submit reactivation request behavior.
 export const submitReactivationRequest = async (message) => {
   try {
     const token = localStorage.getItem('token');
@@ -198,6 +207,7 @@ export const submitReactivationRequest = async (message) => {
   }
 };
 
+// Gets my reactivation requests data.
 export const fetchMyReactivationRequests = async () => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
@@ -208,6 +218,7 @@ export const fetchMyReactivationRequests = async () => {
   return response.data;
 };
 
+// Gets pending reactivation requests data.
 export const fetchPendingReactivationRequests = async () => {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
@@ -218,6 +229,7 @@ export const fetchPendingReactivationRequests = async () => {
   return response.data;
 };
 
+// Prepares approve reactivation request.
 export const approveReactivationRequest = async (requestId) => {
   try {
     const token = localStorage.getItem('token');
@@ -235,6 +247,7 @@ export const approveReactivationRequest = async (requestId) => {
   }
 };
 
+// Prepares reject reactivation request.
 export const rejectReactivationRequest = async (requestId) => {
   try {
     const token = localStorage.getItem('token');
@@ -247,6 +260,84 @@ export const rejectReactivationRequest = async (requestId) => {
     return response.data;
   } catch (error) {
     console.error('Reject reactivation request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to reject request');
+    throw error;
+  }
+};
+
+// Coordinates submit reinstatement request behavior.
+export const submitReinstatementRequest = async (message) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(
+      '/auth/reinstatement-request',
+      { message },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    toast.success('Reinstatement request submitted.');
+    return response.data;
+  } catch (error) {
+    console.error('Submit reinstatement request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to submit reinstatement request');
+    throw error;
+  }
+};
+
+// Gets my reinstatement requests data.
+export const fetchMyReinstatementRequests = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await api.get('/auth/reinstatement-requests/me', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+// Gets reinstatement requests data.
+export const fetchReinstatementRequests = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('Not authenticated');
+
+  const response = await api.get('/auth/reinstatement-requests', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+// Prepares approve reinstatement request.
+export const approveReinstatementRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/reinstatement-requests/${requestId}/approve`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Reinstatement request approved.');
+    return response.data;
+  } catch (error) {
+    console.error('Approve reinstatement request error:', error);
+    toast.error(error.response?.data?.detail || 'Unable to approve request');
+    throw error;
+  }
+};
+
+// Prepares reject reinstatement request.
+export const rejectReinstatementRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const response = await api.post(`/auth/reinstatement-requests/${requestId}/reject`, null, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    toast.success('Reinstatement request rejected.');
+    return response.data;
+  } catch (error) {
+    console.error('Reject reinstatement request error:', error);
     toast.error(error.response?.data?.detail || 'Unable to reject request');
     throw error;
   }

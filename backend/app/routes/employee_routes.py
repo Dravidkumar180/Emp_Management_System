@@ -1,3 +1,4 @@
+"""Defines API routes for employee."""
 from fastapi import APIRouter, HTTPException, Query, Request, Depends
 from typing import List, Optional
 from app.controllers.employee_controller import EmployeeController
@@ -9,6 +10,7 @@ router = APIRouter()
 
 
 @router.get("/employees", response_model=List[dict])
+# Gets all employees data.
 async def get_all_employees(
     department: Optional[str] = Query(None, description="Filter by department"),
     status: Optional[str] = Query(None, description="Filter by status"),
@@ -29,6 +31,7 @@ async def get_all_employees(
 
 
 @router.get("/employees/{employee_id}", response_model=dict)
+# Gets employee data.
 async def get_employee(
     employee_id: int,
     current_user: User = Depends(get_current_active_user)
@@ -40,6 +43,7 @@ async def get_employee(
 
 
 @router.post("/employees", response_model=dict, status_code=201)
+# Creates employee data.
 async def create_employee(
     employee: EmployeeCreate,
     request: Request,
@@ -56,6 +60,7 @@ async def create_employee(
 
 
 @router.put("/employees/{employee_id}", response_model=dict)
+# Updates employee data.
 async def update_employee(
     employee_id: int,
     employee: EmployeeUpdate,
@@ -76,6 +81,7 @@ async def update_employee(
 
 
 @router.delete("/employees/{employee_id}")
+# Deletes employee data.
 async def delete_employee(
     employee_id: int,
     request: Request,
@@ -92,6 +98,7 @@ async def delete_employee(
 
 
 @router.get("/stats/departments")
+# Gets department stats data.
 async def get_department_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get department statistics
@@ -100,6 +107,7 @@ async def get_department_stats(current_user: User = Depends(get_current_active_u
 
 
 @router.get("/stats/status")
+# Gets status stats data.
 async def get_status_stats(current_user: User = Depends(get_current_active_user)):
     """
     Get status statistics

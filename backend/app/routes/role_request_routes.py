@@ -1,3 +1,4 @@
+"""Defines API routes for role request."""
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
 from app.controllers.role_request_controller import RoleRequestController
@@ -6,17 +7,23 @@ from app.database.models import User
 
 router = APIRouter()
 
+# Defines the role request create body class.
 class RoleRequestCreateBody(BaseModel):
+    """Groups role request create body helper functions."""
     current_password: str
     admin_email: EmailStr
 
+# Defines the role request action response class.
 class RoleRequestActionResponse(BaseModel):
+    """Groups role request action response helper functions."""
     message: str
     request_id: int
     status: str
 
 @router.post('/auth/role-request')
+# Creates role request data.
 async def create_role_request(data: RoleRequestCreateBody, current_user: User = Depends(get_current_active_user)):
+    """Create role request records."""
     requester_email = current_user.email
     try:
         request_obj = RoleRequestController.submit_role_request(requester_email, data.current_password, data.admin_email)
@@ -37,7 +44,9 @@ async def create_role_request(data: RoleRequestCreateBody, current_user: User = 
         raise HTTPException(status_code=500, detail='Unable to create role request')
 
 @router.get('/auth/role-requests')
+# Runs list user role requests.
 async def list_user_role_requests(current_user: User = Depends(get_current_active_user)):
+    """Runs list user role requests logic."""
     requester_email = current_user.email
     try:
         requests = RoleRequestController.get_user_requests(requester_email)
@@ -62,7 +71,9 @@ async def list_user_role_requests(current_user: User = Depends(get_current_activ
 
 
 @router.get('/auth/role-requests/pending')
+# Runs list pending role requests.
 async def list_pending_role_requests(current_user: User = Depends(get_current_active_user)):
+    """Runs list pending role requests logic."""
     admin_email = current_user.email
     try:
         requests = RoleRequestController.get_pending_requests(admin_email)
@@ -86,7 +97,9 @@ async def list_pending_role_requests(current_user: User = Depends(get_current_ac
         raise HTTPException(status_code=500, detail='Unable to fetch pending requests')
 
 @router.post('/auth/role-requests/{request_id}/approve')
+# Runs approve role request.
 async def approve_role_request(request_id: int, current_user: User = Depends(get_current_active_user)):
+    """Runs approve role request logic."""
     admin_email = current_user.email
     try:
         request_obj = RoleRequestController.approve_request(request_id, admin_email)
@@ -102,7 +115,9 @@ async def approve_role_request(request_id: int, current_user: User = Depends(get
         raise HTTPException(status_code=500, detail='Unable to approve request')
 
 @router.post('/auth/role-requests/{request_id}/reject')
+# Runs reject role request.
 async def reject_role_request(request_id: int, current_user: User = Depends(get_current_active_user)):
+    """Runs reject role request logic."""
     admin_email = current_user.email
     try:
         request_obj = RoleRequestController.reject_request(request_id, admin_email)
