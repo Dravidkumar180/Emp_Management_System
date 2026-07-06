@@ -11,9 +11,13 @@ import './Dashboard.css';
 
 // Shows the dashboard component.
 const Dashboard = () => {
+  // Gets current logged-in user.
   const { user } = useAuth();
+  // Stores all employee records.
   const [employees, setEmployees] = useState([]);
+  // Tracks dashboard loading state.
   const [loading, setLoading] = useState(true);
+  // Stores dashboard summary numbers.
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -23,10 +27,15 @@ const Dashboard = () => {
     onLeave: 0,
     inactive: 0
   });
+  // Stores department chart data.
   const [departmentData, setDepartmentData] = useState([]);
+  // Stores role chart data.
   const [roleData, setRoleData] = useState([]);
+  // Stores status chart data.
   const [statusData, setStatusData] = useState([]);
+  // Stores recently joined employees.
   const [recentEmployees, setRecentEmployees] = useState([]);
+  // Stores weekly activity chart data.
   const [activityData, setActivityData] = useState([]);
 
   const BAR_COLORS = ['#2f6de1', '#7c3aed', '#0f91a8', '#db2777', '#ea580c', '#2563eb', '#7c3aed', '#0f91a8'];

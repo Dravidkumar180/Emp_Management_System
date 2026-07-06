@@ -51,18 +51,31 @@ const formatHistoryDate = (value) => {
 
 // Shows the users component.
 const Users = () => {
+  // Gets logged-in user.
   const { user } = useAuth();
+  // Shows app notifications.
   const { addNotification } = useNotifications();
+  // Stores invite email.
   const [email, setEmail] = useState('');
+  // Stores invite role.
   const [role, setRole] = useState('user');
+  // Stores invite expiry days.
   const [expiresDays, setExpiresDays] = useState(7);
+  // Stores invite list.
   const [invitations, setInvitations] = useState([]);
+  // Stores member list.
   const [members, setMembers] = useState([]);
+  // Stores reinstatement requests.
   const [reinstatementRequests, setReinstatementRequests] = useState([]);
+  // Stores history filter.
   const [reinstatementFilter, setReinstatementFilter] = useState('pending');
+  // Stores suspension reasons.
   const [suspensionReasons, setSuspensionReasons] = useState({});
+  // Tracks page loading.
   const [loading, setLoading] = useState(true);
+  // Tracks invite creation.
   const [creating, setCreating] = useState(false);
+  // Tracks active action.
   const [busyId, setBusyId] = useState(null);
 
   // Prepares company name.
@@ -82,6 +95,7 @@ const Users = () => {
     approved: reinstatementRequests.filter((request) => request.status === 'approved').length,
     rejected: reinstatementRequests.filter((request) => request.status === 'rejected').length,
   };
+  // Filters reinstatement history.
   const visibleReinstatementRequests = reinstatementFilter === 'all'
     ? reinstatementRequests
     : reinstatementRequests.filter((request) => request.status === reinstatementFilter);
@@ -95,18 +109,23 @@ const Users = () => {
   // Gets users data.
   const loadUsersData = async () => {
     try {
+      // Starts loading users.
       setLoading(true);
+      // Loads invites, members, requests.
       const [inviteData, memberData, reinstatementData] = await Promise.all([
         fetchUserInvitations(),
         fetchMembers(),
         fetchReinstatementRequests(),
       ]);
+      // Saves loaded data.
       setInvitations(inviteData);
       setMembers(memberData);
       setReinstatementRequests(reinstatementData);
     } catch (error) {
+      // Shows loading error.
       toast.error(error.response?.data?.detail || 'Unable to load users');
     } finally {
+      // Stops loading users.
       setLoading(false);
     }
   };
@@ -118,25 +137,35 @@ const Users = () => {
 
   // Handles create invite actions.
   const handleCreateInvite = async (event) => {
+    // Stops page refresh.
     event.preventDefault();
+    // Checks invite email.
     if (!email.trim()) {
       toast.error('Enter an email address');
       return;
     }
 
     try {
+      // Starts invite creation.
       setCreating(true);
+      // Creates invite on server.
       const invitation = await createUserInvitation({ email, role, expiresDays });
+      // Builds invite link.
       const inviteUrl = getInvitationUrl(invitation.token);
+      // Copies invite link.
       await copyText(inviteUrl);
       toast.success('Invitation link copied.');
+      // Clears invite form.
       setEmail('');
       setRole('user');
       setExpiresDays(7);
+      // Refreshes users data.
       await loadUsersData();
     } catch (error) {
+      // Shows invite error.
       toast.error(error.response?.data?.detail || 'Unable to create invitation');
     } finally {
+      // Stops invite creation.
       setCreating(false);
     }
   };
@@ -154,12 +183,17 @@ const Users = () => {
   // Handles revoke actions.
   const handleRevoke = async (invitationId) => {
     try {
+      // Marks invite as busy.
       setBusyId(`invite-${invitationId}`);
+      // Revokes selected invite.
       await revokeUserInvitation(invitationId);
+      // Refreshes users data.
       await loadUsersData();
     } catch (error) {
+      // Shows revoke error.
       toast.error(error.response?.data?.detail || 'Unable to revoke invitation');
     } finally {
+      // Clears busy action.
       setBusyId(null);
     }
   };
@@ -167,31 +201,41 @@ const Users = () => {
   // Handles deactivate actions.
   const handleDeactivate = async (memberId) => {
     try {
+      // Marks member as busy.
       setBusyId(`member-${memberId}`);
+      // Deactivates selected member.
       await deactivateMember(memberId);
+      // Refreshes users data.
       await loadUsersData();
     } catch (error) {
+      // Shows deactivate error.
       toast.error(error.response?.data?.detail || 'Unable to deactivate member');
     } finally {
+      // Clears busy action.
       setBusyId(null);
     }
   };
 
   // Handles suspend actions.
   const handleSuspend = async (memberId) => {
+    // Gets suspension reason.
     const reason = suspensionReasons[memberId]?.trim() || 'No reason provided';
     // Prepares member.
     const member = members.find((item) => item.id === memberId);
 
     try {
+      // Marks suspend as busy.
       setBusyId(`suspend-${memberId}`);
+      // Suspends selected member.
       const suspendedMember = await suspendMember(memberId, reason);
       const notificationMember = suspendedMember || member;
+      // Notifies current admin.
       addNotification({
         type: 'warning',
         title: 'Account Suspended',
         message: `${notificationMember?.name || notificationMember?.email || 'Member'} was suspended.`,
       });
+      // Notifies suspended member.
       if (notificationMember?.email) {
         createNotificationForUser(notificationMember, {
           type: 'warning',
@@ -199,15 +243,20 @@ const Users = () => {
           message: `Your account was suspended. Reason: ${reason}`,
         });
       }
+      // Clears reason input.
       setSuspensionReasons((current) => ({ ...current, [memberId]: '' }));
+      // Refreshes users data.
       await loadUsersData();
     } catch (error) {
+      // Shows suspend error.
       toast.error(error.response?.data?.detail || 'Unable to suspend member');
     } finally {
+      // Clears busy action.
       setBusyId(null);
     }
   };
 
+  // Shows loading screen.
   if (loading) {
     return (
       <div className="users-page">
@@ -227,6 +276,7 @@ const Users = () => {
       </div>
 
       <div className="suspension-stats">
+        {/* Shows user status counts. */}
         <div className="suspension-stat">
           <span>Active Users</span>
           <strong>{activeMembers.length}</strong>
@@ -252,6 +302,7 @@ const Users = () => {
       <div className="users-top-grid">
         <section className="users-card invite-card">
           <h2>Create Invite</h2>
+          {/* Creates and copies invite link. */}
           <form className="invite-form" onSubmit={handleCreateInvite}>
             <label>
               <span>Email</span>
@@ -290,6 +341,7 @@ const Users = () => {
 
         <section className="users-card pending-card">
           <h2>Pending Invites</h2>
+          {/* Shows pending invitations. */}
           <div className="users-table-wrap">
             <table className="users-table">
               <thead>
@@ -338,6 +390,7 @@ const Users = () => {
 
       <section className="users-card members-card">
         <h2>Members</h2>
+        {/* Shows members and actions. */}
         <div className="users-table-wrap">
           <table className="users-table members-table">
             <thead>
@@ -422,6 +475,7 @@ const Users = () => {
           <h2>Reinstatement History</h2>
           <p>Review reinstatement request status for suspended users.</p>
         </div>
+        {/* Filters reinstatement history. */}
         <div className="reinstatement-history-tabs" role="tablist" aria-label="Reinstatement history filters">
           <button
             type="button"
@@ -452,6 +506,7 @@ const Users = () => {
             All Requests
           </button>
         </div>
+        {/* Shows reinstatement requests. */}
         <div className="users-table-wrap">
           <table className="users-table reinstatement-table">
             <thead>
@@ -497,6 +552,7 @@ const Users = () => {
           <h2>User Status Management</h2>
           <p>Manage and configure user account statuses and their behavior.</p>
         </div>
+        {/* Explains account statuses. */}
         <div className="users-table-wrap">
           <table className="users-table status-management-table">
             <thead>

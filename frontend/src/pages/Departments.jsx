@@ -7,11 +7,17 @@ import { logAuditAction } from '../services/audit';
 
 // Shows the departments component.
 const Departments = () => {
+  // List
   const [departments, setDepartments] = useState([]);
+  // Loading
   const [loading, setLoading] = useState(true);
+  // Search text
   const [searchTerm, setSearchTerm] = useState('');
+  // Add modal
   const [showAddModal, setShowAddModal] = useState(false);
+  // New name
   const [newDepartment, setNewDepartment] = useState('');
+  // Add error
   const [addError, setAddError] = useState('');
 
   // Runs when this screen needs to update data.
@@ -26,8 +32,9 @@ const Departments = () => {
     return JSON.parse(localStorage.getItem('departments') || '[]');
   };
 
-  // Helps with build department list.
+  // Build list
   const buildDepartmentList = (employees, savedDepartments) => {
+    // Count names
     const deptMap = {};
     employees.forEach(emp => {
       if (emp.department) {
@@ -35,12 +42,14 @@ const Departments = () => {
       }
     });
 
+    // Unique names
     const departmentNames = new Map();
     Object.keys(deptMap).forEach((name) => departmentNames.set(name.toLowerCase(), name));
     savedDepartments.forEach((name) => {
       if (name) departmentNames.set(name.toLowerCase(), name);
     });
 
+    // Sort list
     return [...departmentNames.values()]
       .map((name) => ({ name, count: deptMap[name] || 0 }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -59,32 +68,41 @@ const Departments = () => {
     }
   };
 
-  // Saves department data.
+  // Save department
   const saveDepartment = async () => {
+    // Clean name
     const trimmedName = newDepartment.trim();
+    // Required check
     if (!trimmedName) {
       setAddError('Department name is required');
       return;
     }
 
+    // Duplicate check
     if (departments.some((dept) => dept.name.toLowerCase() === trimmedName.toLowerCase())) {
       setAddError('This department already exists');
       return;
     }
 
+    // Saved list
     const savedDepartments = getSavedDepartments();
+    // Remove duplicates
     const updatedDepartments = [...savedDepartments, trimmedName]
       .filter((name, index, list) => (
         list.findIndex((item) => item.toLowerCase() === name.toLowerCase()) === index
       ));
     localStorage.setItem('departments', JSON.stringify(updatedDepartments));
 
+    // Update list
     setDepartments((prev) => [...prev, { name: trimmedName, count: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
+    // Notify app
     window.dispatchEvent(new CustomEvent('departmentsUpdated', { detail: { department: trimmedName } }));
     setNewDepartment('');
     setAddError('');
     setShowAddModal(false);
+    // Success message
     addNotification({ type: 'success', title: 'Department Added', message: `${trimmedName} was created` });
+    // Audit log
     await logAuditAction({
       action: 'Department Created',
       entityType: 'department',

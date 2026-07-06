@@ -44,7 +44,9 @@ const createLocalAuditLog = ({
   oldValue,
   newValue
 }) => {
+  // Gets user for audit entry.
   const user = getCurrentUser();
+  // Builds local audit entry.
   const entry = {
     id: `local-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     action,
@@ -60,6 +62,7 @@ const createLocalAuditLog = ({
     created_at: new Date().toISOString(),
     source: 'local',
   };
+  // Keeps latest local logs.
   const logs = readLocalAuditLogs();
   writeLocalAuditLogs([entry, ...logs].slice(0, 500));
   return entry;
@@ -67,15 +70,18 @@ const createLocalAuditLog = ({
 
 // Gets audit logs data.
 export const fetchAuditLogs = async () => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
+  // Uses local logs without token.
   if (!token) {
     return readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
   }
 
-  // Prepares local logs.
+  // Gets local company logs.
   const localLogs = readLocalAuditLogs().filter((log) => (log.company_id || 'company-a') === getCompanyId());
 
   try {
+    // Requests audit logs from API.
     const response = await fetch(`${API_BASE_URL}/audit-logs`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -83,14 +89,17 @@ export const fetchAuditLogs = async () => {
       }
     });
 
+    // Uses local logs on API failure.
     if (!response.ok) {
       return localLogs;
     }
 
+    // Combines local and API logs.
     const data = await response.json();
     const apiLogs = Array.isArray(data) ? data : [];
     return [...localLogs, ...apiLogs].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   } catch {
+    // Uses local logs on error.
     return localLogs;
   }
 };
@@ -104,7 +113,9 @@ export const logAuditAction = async ({
   oldValue,
   newValue
 }) => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
+  // Saves locally without token.
   if (!token) {
     return createLocalAuditLog({
       action,
@@ -118,6 +129,7 @@ export const logAuditAction = async ({
   }
 
   try {
+    // Sends audit log to API.
     const response = await fetch(`${API_BASE_URL}/audit-logs`, {
       method: 'POST',
       headers: {
@@ -136,6 +148,7 @@ export const logAuditAction = async ({
       })
     });
 
+    // Saves locally if API fails.
     if (!response.ok) {
       return createLocalAuditLog({
         action,
@@ -148,8 +161,10 @@ export const logAuditAction = async ({
       });
     }
 
+    // Returns saved API log.
     return await response.json();
   } catch (error) {
+    // Saves locally on error.
     console.error('Audit log error:', error);
     return createLocalAuditLog({
       action,

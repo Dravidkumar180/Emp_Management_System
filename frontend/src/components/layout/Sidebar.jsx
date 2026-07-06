@@ -36,6 +36,36 @@ const Sidebar = () => {
       ),
       roles: ['super_admin', 'admin', 'user']
     },
+    {
+      path: '/holiday-calendar',
+      name: 'Holiday Calendar',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M16 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>
+          <path d="M8 14H8.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M12 14H12.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M16 14H16.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      ),
+      roles: ['admin', 'user']
+    },
+    {
+      path: '/login-devices',
+      name: 'Login Devices',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M8 22H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M12 18V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M17 8L19 10L17 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M7 12L5 10L7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      roles: ['admin', 'user']
+    },
     { 
       path: '/departments', 
       name: 'Departments', 
@@ -138,17 +168,15 @@ const Sidebar = () => {
       roles: ['super_admin', 'admin']
     },
     {
-      path: '/holiday-calendar',
-      name: 'Holiday Calendar',
+      path: '/user-session-monitor',
+      name: 'User Session Monitor',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
-          <path d="M16 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M8 3V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <path d="M3 10H21" stroke="currentColor" strokeWidth="2"/>
-          <path d="M8 14H8.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M12 14H12.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M16 14H16.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <rect x="3" y="4" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M8 21H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M12 17V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 9H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <path d="M8 13H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
       ),
       roles: ['admin']

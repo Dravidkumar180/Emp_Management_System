@@ -8,22 +8,38 @@ import './Login.css';
 
 // Shows the login component.
 const Login = () => {
+  // Login mode
   const [isLogin, setIsLogin] = useState(true);
+  // User name
   const [name, setName] = useState('');
+  // User email
   const [email, setEmail] = useState('');
+  // User password
   const [password, setPassword] = useState('');
+  // Confirm password
   const [confirmPassword, setConfirmPassword] = useState('');
+  // User role
   const [role, setRole] = useState('user');
+  // Company id
   const [companyId, setCompanyId] = useState('company-a');
+  // Invite token
   const [inviteToken, setInviteToken] = useState('');
+  // Lock invite fields
   const [inviteLocked, setInviteLocked] = useState(false);
+  // Invite loading
   const [inviteLoading, setInviteLoading] = useState(false);
+  // Remember option
   const [rememberMe, setRememberMe] = useState(false);
+  // Error message
   const [error, setError] = useState('');
+  // Submit loading
   const [loading, setLoading] = useState(false);
   
+  // Auth actions
   const { login, register } = useAuth();
+  // Page navigation
   const navigate = useNavigate();
+  // Url params
   const [searchParams] = useSearchParams();
 
   // Navigates based on the user role.
@@ -47,12 +63,16 @@ const Login = () => {
     // Gets invite data.
     const loadInvite = async () => {
       try {
+        // Starts invite loading.
         setInviteLoading(true);
+        // Fetches invite details.
         const invitation = await fetchPublicInvitation(token);
+        // Checks invite validity.
         if (invitation.status !== 'pending' || invitation.is_expired) {
           setError('This invitation is no longer available');
           return;
         }
+        // Applies invite data.
         setInviteToken(token);
         setInviteLocked(true);
         setIsLogin(false);
@@ -60,61 +80,79 @@ const Login = () => {
         setRole(invitation.role);
         setCompanyId(String(invitation.company_id));
       } catch (error) {
+        // Shows invite error.
         setError(error.response?.data?.detail || 'Invalid invitation link');
       } finally {
+        // Stops invite loading.
         setInviteLoading(false);
       }
     };
 
+    // Loads invite link.
     loadInvite();
   }, [searchParams]);
 
-  // Handles submit actions.
+  // Handles form submit.
   const handleSubmit = async (e) => {
+    // Stops page refresh.
     e.preventDefault();
+    // Clears old error.
     setError('');
+    // Starts submit loading.
     setLoading(true);
 
+    // Runs login flow.
     if (isLogin) {
+      // Checks login fields.
       if (!email || !password) {
         setError('Please fill in all fields');
         setLoading(false);
         return;
       }
       
+      // Sends login request.
       const result = await login(email, password);
       if (result.success) {
+        // Opens correct page.
         navigateByRole(result.user);
       } else {
+        // Shows login error.
         setError(result.error || 'Login failed');
       }
     } else {
+      // Checks signup fields.
       if (!name || !email || !password || !confirmPassword) {
         setError('Please fill in all fields');
         setLoading(false);
         return;
       }
       
+      // Checks password match.
       if (password !== confirmPassword) {
         setError('Passwords do not match');
         setLoading(false);
         return;
       }
       
+      // Checks password length.
       if (password.length < 6) {
         setError('Password must be at least 6 characters');
         setLoading(false);
         return;
       }
       
+      // Sends signup request.
       const result = await register(name, email, password, role, companyId, inviteToken || null);
       if (result.success) {
+        // Opens correct page.
         navigateByRole(result.user);
       } else {
+        // Shows signup error.
         setError(result.error || 'Registration failed');
       }
     }
     
+    // Stops submit loading.
     setLoading(false);
   };
 
@@ -132,6 +170,7 @@ const Login = () => {
         </div>
         
         <form onSubmit={handleSubmit}>
+          {/* Shows name for signup. */}
           {!isLogin && (
             <div className="form-group">
               <label>Full Name</label>
@@ -145,6 +184,7 @@ const Login = () => {
             </div>
           )}
 
+          {/* Shows company for signup. */}
           {!isLogin && (
             <div className="form-group">
               <label>Company</label>
@@ -157,6 +197,7 @@ const Login = () => {
             </div>
           )}
 
+          {/* Shows role for signup. */}
           {!isLogin && (
             <div className="form-group">
               <label>Role</label>
@@ -167,6 +208,7 @@ const Login = () => {
             </div>
           )}
           
+          {/* Gets email or name. */}
           <div className="form-group">
             <label>Email / Name</label>
             <input
@@ -178,6 +220,7 @@ const Login = () => {
             />
           </div>
           
+          {/* Gets user password. */}
           <div className="form-group">
             <label>Password</label>
             <input
@@ -189,6 +232,7 @@ const Login = () => {
             />
           </div>
           
+          {/* Shows login options. */}
           {isLogin && (
             <div className="form-options">
               <label className="checkbox">
@@ -205,6 +249,7 @@ const Login = () => {
             </div>
           )}
           
+          {/* Confirms signup password. */}
           {!isLogin && (
             <div className="form-group">
               <label>Confirm Password</label>
@@ -218,8 +263,10 @@ const Login = () => {
             </div>
           )}
           
+          {/* Shows form error. */}
           {error && <div className="error-message">{error}</div>}
           
+          {/* Submits login or signup. */}
           <button type="submit" className="login-btn" disabled={loading || inviteLoading}>
             {loading || inviteLoading ? 'Please wait...' : (isLogin ? 'Log in' : 'Sign up')}
           </button>
@@ -232,7 +279,9 @@ const Login = () => {
               type="button"
               className="switch-btn"
               onClick={() => {
+                // Switches form mode.
                 setIsLogin(!isLogin);
+                // Clears form values.
                 setError('');
                 setName('');
                 setEmail('');

@@ -62,6 +62,33 @@ class Holiday(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# Defines the login device session class.
+class LoginDeviceSession(Base):
+    """Login device and active/historical session model."""
+    __tablename__ = "login_device_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_identifier = Column(String(120), unique=True, index=True, nullable=False)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_name = Column(String(100), nullable=False)
+    user_email = Column(String(100), nullable=False, index=True)
+    browser = Column(String(120), nullable=True)
+    device_name = Column(String(120), nullable=True)
+    device_info = Column(String(250), nullable=True)
+    ip_address = Column(String(50), nullable=True)
+    location = Column(String(150), nullable=True)
+    login_time = Column(DateTime, default=datetime.utcnow)
+    last_activity_time = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(30), default="Active")
+    trusted = Column(Boolean, default=False)
+    termination_reason = Column(String(120), nullable=True)
+    revoked_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    revoked_by_name = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # Defines the department class.
 class Department(Base):
     """Department Model"""

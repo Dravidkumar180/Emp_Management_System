@@ -58,12 +58,13 @@ const AuditLogs = () => {
         return '';
     };
 
-    // Helps with filtered logs.
+    // Filters logs using search text.
     const filteredLogs = logs.filter((log) => {
         const action = String(log.action || '');
         const userName = String(log.user_name || '');
         const entityName = String(log.entity_name || '');
         const search = searchTerm.toLowerCase();
+        // Checks user, action, or entity.
         const matchesSearch = searchTerm === '' ||
             userName.toLowerCase().includes(search) ||
             action.toLowerCase().includes(search) ||
@@ -72,12 +73,15 @@ const AuditLogs = () => {
         return matchesSearch;
     });
 
+    // Counts total table pages.
     const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+    // Shows logs for current page.
     const paginatedLogs = filteredLogs.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
+    // Shows loader while fetching logs.
     if (loading) {
         return (
             <DashboardLayout>
@@ -112,6 +116,7 @@ const AuditLogs = () => {
                             placeholder="Search by user, action, or entity..."
                             value={searchTerm}
                             onChange={(event) => {
+                                // Updates search and resets page.
                                 setSearchTerm(event.target.value);
                                 setCurrentPage(1);
                             }}
@@ -131,6 +136,7 @@ const AuditLogs = () => {
                             </tr>
                         </thead>
                         <tbody>
+                            {/* Shows message when logs missing. */}
                             {paginatedLogs.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="no-data">
@@ -141,6 +147,7 @@ const AuditLogs = () => {
                                     </td>
                                 </tr>
                             ) : (
+                                // Shows each audit log row.
                                 paginatedLogs.map((log) => (
                                     <tr key={log.id}>
                                         <td>
@@ -183,10 +190,12 @@ const AuditLogs = () => {
                     </table>
                 </div>
 
+                {/* Shows pagination when needed. */}
                 {totalPages > 1 && (
                     <div className="pagination">
                         <button
                             className="page-btn"
+                            // Moves to previous page.
                             onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                             disabled={currentPage === 1}
                         >
@@ -197,6 +206,7 @@ const AuditLogs = () => {
                         </span>
                         <button
                             className="page-btn"
+                            // Moves to next page.
                             onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                             disabled={currentPage === totalPages}
                         >

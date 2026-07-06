@@ -5,15 +5,21 @@ import { logAuditAction } from './audit';
 
 const JSONPLACEHOLDER_URL = 'https://jsonplaceholder.typicode.com';
 
-// Transform user data to employee format
+// Converts API user to employee.
 const transformUserToEmployee = (user) => {
+  // Demo department options.
   const departments = ['Marketing', 'Data', 'Product', 'Human Resources', 'Design', 'Engineering', 'Sales', 'Finance'];
+  // Demo status options.
   const statuses = ['Inactive', 'On Leave', 'Active', 'Inactive', 'Active', 'Active', 'Remote', 'Active'];
+  // Demo role options.
   const roles = ['Marketing Specialist', 'Data Scientist', 'Product Manager', 'HR Manager', 'UI/UX Designer', 'Frontend Developer', 'Sales Executive', 'Financial Analyst'];
   
+  // Picks demo values.
   const index = (user.id - 1) % departments.length;
+  // Splits users by company.
   const companyId = user.id <= 5 ? 'company-a' : 'company-b';
   
+  // Builds employee object.
   return {
     id: user.id,
     name: user.name,
@@ -32,37 +38,42 @@ const transformUserToEmployee = (user) => {
   };
 };
 
-// Fetch employees from JSONPlaceholder
+// Fetches demo employees.
 export const fetchEmployees = async () => {
   try {
+    // Gets users from API.
     const response = await axios.get(`${JSONPLACEHOLDER_URL}/users`);
     const users = response.data;
+    // Converts users to employees.
     return users.map(transformUserToEmployee);
   } catch (error) {
+    // Returns empty list on error.
     console.error('Fetch error:', error);
     return [];
   }
 };
 
-// Get all employees (API + localStorage)
+// Gets API and saved employees.
 export const getAllEmployees = async () => {
   try {
+    // Gets demo employees.
     const apiEmployees = await fetchEmployees();
+    // Gets saved local employees.
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
-    // Saves by ID.
+    // Maps saved employees by ID.
     const savedById = savedEmployees.reduce((acc, emp) => {
       acc[emp.id] = emp;
       return acc;
     }, {});
-    // Prepares API by ID.
+    // Maps API employees by ID.
     const apiById = apiEmployees.reduce((acc, emp) => {
       acc[emp.id] = emp;
       return acc;
     }, {});
 
-    // Prepares merged employees.
+    // Uses saved edits first.
     const mergedEmployees = apiEmployees.map((emp) => savedById[emp.id] || emp);
-    // Saves only.
+    // Keeps new local employees.
     const savedOnly = savedEmployees.filter((emp) => !apiById[emp.id]);
     return [...mergedEmployees, ...savedOnly];
   } catch (error) {
@@ -71,14 +82,19 @@ export const getAllEmployees = async () => {
   }
 };
 
-// Create new employee (save to localStorage)
+// Creates new employee.
 export const createEmployee = async (employeeData) => {
   try {
+    // Gets saved employees.
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
+    // Gets current user.
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    // Gets employee company.
     const companyId = employeeData.companyId || currentUser.companyId || 'company-a';
-    const newId = Date.now(); // Unique ID
+    // Creates unique ID.
+    const newId = Date.now();
     
+    // Builds new employee.
     const newEmployee = {
       id: newId,
       name: employeeData.name,
@@ -95,8 +111,10 @@ export const createEmployee = async (employeeData) => {
       avatar: employeeData.avatar || employeeData.name.charAt(0).toUpperCase()
     };
     
+    // Saves employee locally.
     savedEmployees.push(newEmployee);
     localStorage.setItem('employees', JSON.stringify(savedEmployees));
+    // Records create action.
     await logAuditAction({
       action: 'Employee Created',
       entityType: 'employee',
@@ -106,26 +124,32 @@ export const createEmployee = async (employeeData) => {
       newValue: newEmployee
     });
     
+    // Shows success message.
     toast.success('Employee added successfully!');
     return newEmployee;
   } catch (error) {
+    // Shows create error.
     console.error('Create error:', error);
     toast.error('Failed to add employee');
     throw error;
   }
 };
 
-// Update employee
+// Updates employee.
 export const updateEmployee = async (id, employeeData) => {
   try {
+    // Gets saved employees.
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
-    // Prepares index.
+    // Finds employee index.
     const index = savedEmployees.findIndex(emp => emp.id === id);
+    // Keeps old employee data.
     const oldEmployee = index !== -1 ? savedEmployees[index] : null;
 
+    // Updates existing employee.
     if (index !== -1) {
       savedEmployees[index] = { ...savedEmployees[index], ...employeeData };
       localStorage.setItem('employees', JSON.stringify(savedEmployees));
+      // Records update action.
       await logAuditAction({
         action: 'Employee Updated',
         entityType: 'employee',
@@ -139,13 +163,16 @@ export const updateEmployee = async (id, employeeData) => {
       return savedEmployees[index];
     }
 
+    // Creates missing local employee.
     const updatedEmployee = {
       id,
       ...employeeData,
       avatar: employeeData.name ? employeeData.name.charAt(0).toUpperCase() : employeeData.avatar,
     };
+    // Saves created update locally.
     savedEmployees.push(updatedEmployee);
     localStorage.setItem('employees', JSON.stringify(savedEmployees));
+    // Records update action.
     await logAuditAction({
       action: 'Employee Updated',
       entityType: 'employee',
@@ -158,21 +185,24 @@ export const updateEmployee = async (id, employeeData) => {
     toast.success('Employee updated successfully!');
     return updatedEmployee;
   } catch (error) {
+    // Shows update error.
     console.error('Update error:', error);
     toast.error('Failed to update employee');
     throw error;
   }
 };
 
-// Delete employee
+// Deletes employee.
 export const deleteEmployee = async (id) => {
   try {
+    // Gets saved employees.
     const savedEmployees = JSON.parse(localStorage.getItem('employees') || '[]');
-    // Removes employee.
+    // Finds deleted employee.
     const deletedEmployee = savedEmployees.find(emp => emp.id === id);
-    // Helps with filtered.
+    // Removes employee from list.
     const filtered = savedEmployees.filter(emp => emp.id !== id);
     localStorage.setItem('employees', JSON.stringify(filtered));
+    // Records delete action.
     await logAuditAction({
       action: 'Employee Deleted',
       entityType: 'employee',
@@ -182,9 +212,11 @@ export const deleteEmployee = async (id) => {
       oldValue: deletedEmployee
     });
     
+    // Shows success message.
     toast.success('Employee deleted successfully!');
     return { success: true };
   } catch (error) {
+    // Shows delete error.
     console.error('Delete error:', error);
     toast.error('Failed to delete employee');
     throw error;

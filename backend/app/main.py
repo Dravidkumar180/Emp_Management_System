@@ -1,7 +1,7 @@
 """Starts the backend app and connects all routes."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import employee_routes, auth_routes , company_routes, audit_log_routes, user_invitation_routes, reactivation_request_routes, reinstatement_request_routes, holiday_routes
+from app.routes import employee_routes, auth_routes , company_routes, audit_log_routes, user_invitation_routes, reactivation_request_routes, reinstatement_request_routes, holiday_routes, login_device_routes
 from app.routes.role_request_routes import router as role_request_routes
 from app.database.database import engine, SessionLocal
 from app.database.models import Base, Holiday
@@ -186,6 +186,7 @@ app.include_router(user_invitation_routes.router, prefix="/api/v1", tags=["User 
 app.include_router(reactivation_request_routes.router, prefix="/api/v1", tags=["Reactivation Requests"])
 app.include_router(reinstatement_request_routes.router, prefix="/api/v1", tags=["Reinstatement Requests"])
 app.include_router(holiday_routes.router, prefix="/api/v1", tags=["Holidays"])
+app.include_router(login_device_routes.router, prefix="/api/v1", tags=["Login Devices"])
 
 @app.get("/")
 # Runs root.

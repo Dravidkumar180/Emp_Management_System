@@ -18,6 +18,8 @@ import Export from './pages/Export';
 import Tracking from './pages/Tracking';
 import Users from './pages/Users';
 import HolidayCalendar from './pages/HolidayCalendar';
+import LoginDevices from './pages/LoginDevices';
+import UserSessionMonitor from './pages/UserSessionMonitor';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import AccountDeactivated from './pages/AccountDeactivated';
@@ -28,13 +30,17 @@ import './styles/App.css';
 
 // Shows the home redirect component.
 const HomeRedirect = () => {
+  // Gets current user.
   const { user, loading } = useAuth();
 
+  // Waits for auth check.
   if (loading) {
     return null;
   }
 
+  // Sends guests to login.
   if (!user) return <Navigate to="/login" replace />;
+  // Sends user by status.
   return user.is_active === false
     ? <Navigate to="/account-deactivated" replace />
     : user.is_suspended === true
@@ -45,17 +51,25 @@ const HomeRedirect = () => {
 // Runs app.
 function App() {
   return (
+    // Adds theme support.
     <ThemeProvider>
+      {/* Adds notifications. */}
       <NotificationProvider>
+        {/* Adds auth data. */}
         <AuthProvider>
         <Router>
+          {/* Shows toast messages. */}
           <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           <Routes>
+            {/* Login page */}
             <Route path="/login" element={<Login />} />
+            {/* Blocked account pages */}
             <Route path="/account-deactivated" element={<AccountDeactivated />} />
             <Route path="/account-suspended" element={<AccountSuspended />} />
+            {/* Home redirect */}
             <Route path="/" element={<HomeRedirect />} />
             
+            {/* Dashboard page */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardLayout>
@@ -64,6 +78,7 @@ function App() {
               </ProtectedRoute>
             } />
             
+            {/* Employees page */}
             <Route path="/employees" element={
               <ProtectedRoute>
                 <DashboardLayout>
@@ -72,6 +87,7 @@ function App() {
               </ProtectedRoute>
             } />
             
+            {/* Departments page */}
             <Route path="/departments" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
@@ -80,6 +96,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Transfer page */}
             <Route path="/department-transfer" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
@@ -88,6 +105,7 @@ function App() {
               </ProtectedRoute>
             } />
             
+            {/* Attendance page */}
             <Route path="/attendance" element={
               <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
@@ -96,6 +114,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Companies page */}
             <Route path="/companies" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
@@ -104,12 +123,14 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Audit logs */}
             <Route path="/audit-logs" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <AuditLogs />
               </ProtectedRoute>
             } />
 
+            {/* Export page */}
             <Route path="/export" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <DashboardLayout>
@@ -118,6 +139,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Tracking page */}
             <Route path="/tracking" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
@@ -126,6 +148,7 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Users page */}
             <Route path="/users" element={
               <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
                 <DashboardLayout>
@@ -134,14 +157,34 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* Holiday page */}
             <Route path="/holiday-calendar" element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
                   <HolidayCalendar />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
+
+            {/* Login devices page */}
+            <Route path="/login-devices" element={
+              <ProtectedRoute allowedRoles={['admin', 'user']}>
+                <DashboardLayout>
+                  <LoginDevices />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* User session monitoring page */}
+            <Route path="/user-session-monitor" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DashboardLayout>
+                  <UserSessionMonitor />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
             
+            {/* Settings page */}
             <Route path="/settings" element={
               <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
@@ -150,6 +193,7 @@ function App() {
               </ProtectedRoute>
             } />
             
+            {/* Forgot password */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
           </Routes>
         </Router>

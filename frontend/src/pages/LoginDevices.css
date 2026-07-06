@@ -1,0 +1,461 @@
+.login-devices-page {
+  display: grid;
+  gap: 18px;
+  padding: 0 16px;
+}
+
+.login-devices-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.login-devices-header h1 {
+  color: #1d4ed8;
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.login-devices-header p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.device-refresh-btn,
+.device-toolbar button,
+.device-table button,
+.logout-options-card button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px 13px;
+}
+
+.device-refresh-btn,
+.device-toolbar button,
+.device-table button {
+  background: var(--bg-card);
+  color: #4f46e5;
+}
+
+.device-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+}
+
+.device-table-card,
+.logout-options-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.device-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 4px;
+  min-height: 100px;
+  padding: 18px 18px 14px 72px;
+  position: relative;
+}
+
+.device-stats span,
+.device-stats small,
+.device-table span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.device-stats strong {
+  color: var(--text-primary);
+  font-size: 27px;
+  line-height: 1;
+}
+
+.stat-icon {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex !important;
+  font-size: 16px !important;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  left: 18px;
+  position: absolute;
+  top: 28px;
+  width: 42px;
+}
+
+.stat-icon.current,
+.stat-icon.users {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.stat-icon.active,
+.stat-icon.trusted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.stat-icon.history {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.stat-icon.revoked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.stat-icon.force,
+.stat-icon.total {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.device-table-card,
+.logout-options-card {
+  padding: 0;
+}
+
+.device-card-title {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+}
+
+.device-card-title h2,
+.logout-options-card h2 {
+  color: var(--text-primary);
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.device-card-title p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.trusted-pill,
+.current-pill,
+.current-mini,
+.device-status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  margin-left: 6px;
+  padding: 4px 9px;
+}
+
+.trusted-pill,
+.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.current-pill,
+.current-mini {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-logged-out {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-revoked {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-session-expired {
+  background: #ffedd5;
+  color: #ea580c;
+}
+
+.device-toolbar {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) 160px 160px 240px auto;
+  padding: 14px 18px;
+}
+
+.device-toolbar input,
+.device-toolbar select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 10px 12px;
+}
+
+.device-table {
+  border-collapse: collapse;
+  min-width: 1080px;
+  width: 100%;
+}
+
+.device-table-card {
+  overflow-x: auto;
+}
+
+.device-table th,
+.device-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 13px 18px;
+  text-align: left;
+}
+
+.device-table th {
+  background: #f8fafc;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.device-table td {
+  color: var(--text-primary);
+  font-size: 13px;
+  vertical-align: top;
+}
+
+.device-table td strong,
+.device-table td span {
+  display: block;
+}
+
+.device-browser-cell {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.device-name-edit {
+  background: transparent !important;
+  border: 0 !important;
+  color: #64748b !important;
+  margin-left: 8px;
+  padding: 2px 4px !important;
+}
+
+.browser-dot {
+  align-items: center;
+  border-radius: 50%;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  flex: 0 0 30px;
+  font-size: 12px !important;
+  font-weight: 900;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.browser-dot.chrome {
+  background: #22c55e;
+}
+
+.browser-dot.edge {
+  background: #0284c7;
+}
+
+.browser-dot.firefox {
+  background: #f97316;
+}
+
+.browser-dot.safari {
+  background: #2563eb;
+}
+
+.browser-dot.browser {
+  background: #64748b;
+}
+
+.force-btn {
+  background: #fff7ed !important;
+  border-color: #fed7aa !important;
+  color: #ea580c !important;
+  margin-right: 8px;
+}
+
+.revoke-btn {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #dc2626 !important;
+}
+
+.admin-action-select {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: 700;
+  min-width: 150px;
+  padding: 9px 12px;
+}
+
+.trusted-value {
+  border-radius: 999px;
+  display: inline-flex !important;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+
+.trusted-value.yes {
+  background: #dcfce7;
+  color: #15803d !important;
+}
+
+.trusted-value.no {
+  background: transparent;
+  color: var(--text-primary) !important;
+  padding-left: 0;
+}
+
+.device-actions-cell {
+  align-items: center;
+  min-height: 46px;
+  overflow: visible;
+  position: relative;
+  white-space: nowrap;
+}
+
+.device-logout-btn {
+  color: #4f46e5 !important;
+  margin-right: 9px;
+  min-width: 72px;
+}
+
+.action-dash {
+  color: var(--text-secondary) !important;
+  display: inline-block !important;
+  margin-right: 9px;
+  min-width: 72px;
+  text-align: center;
+}
+
+.device-menu-wrap {
+  display: inline-block;
+  position: relative;
+}
+
+.device-menu-btn {
+  align-items: center;
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  color: #4f46e5 !important;
+  display: inline-flex;
+  font-size: 17px;
+  height: 34px;
+  justify-content: center;
+  letter-spacing: 1px;
+  line-height: 1;
+  padding: 0 !important;
+  width: 34px;
+}
+
+.device-action-menu {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  display: grid;
+  min-width: 190px;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: 40px;
+  z-index: 40;
+}
+
+.device-action-menu button {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  color: var(--text-primary) !important;
+  font-weight: 700;
+  justify-content: flex-start;
+  padding: 10px 12px !important;
+  text-align: left;
+}
+
+.device-action-menu button:hover:not(:disabled) {
+  background: #f8fafc !important;
+}
+
+.device-action-menu button:disabled {
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}
+
+.device-empty {
+  color: var(--text-secondary) !important;
+  padding: 34px !important;
+  text-align: center !important;
+}
+
+.logout-options-card {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  padding: 16px;
+}
+
+.logout-options-card h2 {
+  grid-column: 1 / -1;
+}
+
+.logout-options-card button {
+  align-items: center;
+  background: #faf5ff;
+  border-color: #c4b5fd;
+  color: #6d28d9;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.logout-options-card button strong {
+  font-size: 13px;
+}
+
+.logout-options-card button span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.logout-options-card button.danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+@media (max-width: 900px) {
+  .login-devices-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .device-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .device-card-title {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

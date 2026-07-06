@@ -1,13 +1,16 @@
 """Defines API routes for auth."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Union
+from datetime import datetime
+from uuid import uuid4
 from app.controllers.auth_controller import AuthController
 from app.repositories.user_repository import UserRepository
 from app.database.database import SessionLocal
+from app.utils.audit_helper import log_action
 from app.utils.auth import decode_access_token, get_current_active_user
-from app.database.models import User
+from app.database.models import LoginDeviceSession, User
 
 router = APIRouter()
 security = HTTPBearer()
@@ -28,6 +31,11 @@ class LoginRequest(BaseModel):
     email: str
     password: str
     company_id: Optional[Union[int, str]] = None
+    browser: Optional[str] = None
+    device_name: Optional[str] = None
+    device_info: Optional[str] = None
+    ip_address: Optional[str] = None
+    location: Optional[str] = None
 
 # Defines the password reset request class.
 class PasswordResetRequest(BaseModel):
@@ -51,12 +59,47 @@ async def register(user: RegisterRequest):
 
 @router.post("/auth/login")
 # Helps with login.
-async def login(user: LoginRequest):
+async def login(user: LoginRequest, request: Request):
     """Login user"""
     try:
         result = AuthController.login(user.dict())
         if not result:
             raise HTTPException(status_code=401, detail="Invalid credentials")
+        db = SessionLocal()
+        try:
+            now = datetime.utcnow()
+            session = LoginDeviceSession(
+                session_identifier=f"sess_{uuid4().hex[:16]}",
+                user_id=result["user"]["id"],
+                user_name=result["user"]["name"],
+                user_email=result["user"]["email"],
+                company_id=result["user"]["company_id"],
+                browser=user.browser or request.headers.get("user-agent", "Unknown Browser")[:120],
+                device_name=user.device_name or "Current Device",
+                device_info=user.device_info or request.headers.get("user-agent", "Unknown Device")[:250],
+                ip_address=user.ip_address or (request.client.host if request.client else "Unknown"),
+                location=user.location or "Unknown Location",
+                login_time=now,
+                last_activity_time=now,
+                status="Active",
+                trusted=False,
+            )
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+            log_action(
+                result["user"]["id"], result["user"]["name"], result["user"]["email"],
+                "User Login", "login_device", session.id, session.device_name,
+                f"User logged in with session {session.session_identifier}",
+                request=request, company_id=result["user"]["company_id"],
+            )
+            result["session"] = {
+                "id": session.id,
+                "session_identifier": session.session_identifier,
+                "status": session.status,
+            }
+        finally:
+            db.close()
         return result
     except HTTPException:
         raise

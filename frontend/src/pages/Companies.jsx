@@ -13,35 +13,46 @@ const COMPANIES = [
 
 // Shows the companies component.
 const Companies = () => {
+  // Gets current logged-in user.
   const { user } = useAuth();
+  // Stores employees from server.
   const [employees, setEmployees] = useState([]);
+  // Stores newly added companies.
   const [customCompanies, setCustomCompanies] = useState([]);
   const currentCompanyId = user?.companyId || 'company-a';
+  // Stores selected company tab.
   const [activeCompanyId, setActiveCompanyId] = useState(currentCompanyId);
+  // Tracks company loading state.
   const [loading, setLoading] = useState(true);
+  // Controls add company modal.
   const [showAddModal, setShowAddModal] = useState(false);
+  // Stores add company form data.
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     access: '',
   });
 
-  // Runs when this screen needs to update data.
+  // Keeps active company updated.
   useEffect(() => {
     setActiveCompanyId(currentCompanyId);
   }, [currentCompanyId]);
 
-  // Runs when this screen needs to update data.
+  // Loads employees when page opens.
   useEffect(() => {
-    // Gets employees data.
+    // Gets company employees from server.
     const loadEmployees = async () => {
       try {
+        // Starts loading employees.
         setLoading(true);
         const data = await getAllEmployees();
+        // Saves employees in state.
         setEmployees(data);
       } catch (error) {
+        // Shows employee loading error.
         toast.error('Failed to fetch company employees');
       } finally {
+        // Stops loading employees.
         setLoading(false);
       }
     };
@@ -49,15 +60,16 @@ const Companies = () => {
     loadEmployees();
   }, []);
 
-  // Prepares companies.
+  // Builds company list for display.
   const companies = useMemo(() => {
-    // Prepares default companies.
+    // Adds employees to default companies.
     const defaultCompanies = COMPANIES.map((company) => ({
       ...company,
       access: company.id === currentCompanyId ? 'Current company' : 'Isolated tenant',
       employees: employees.filter((employee) => (employee.companyId || 'company-a') === company.id),
     }));
 
+    // Adds custom companies with user counts.
     return [...defaultCompanies, ...customCompanies].map((company) => ({
       ...company,
       access: company.id === currentCompanyId ? 'Current company' : 'Isolated tenant',
@@ -101,6 +113,7 @@ const Companies = () => {
       return;
     }
 
+    // Creates new company object.
     const newCompany = {
       id: slug,
       name: formData.name.trim(),
@@ -109,8 +122,11 @@ const Companies = () => {
       users: 0,
     };
 
+    // Adds company to local list.
     setCustomCompanies((prev) => [...prev, newCompany]);
+    // Opens the newly added company.
     setActiveCompanyId(newCompany.id);
+    // Records company creation in audit.
     await logAuditAction({
       action: 'Company Created',
       entityType: 'company',
@@ -118,10 +134,13 @@ const Companies = () => {
       details: `Company ${newCompany.name} was created`,
       newValue: newCompany
     });
+    // Shows company added message.
     toast.success('Company added');
+    // Closes add company form.
     closeAddModal();
   };
 
+  // Shows loader while companies load.
   if (loading) {
     return (
       <div className="loading-spinner">

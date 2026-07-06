@@ -90,17 +90,29 @@ const renderAvatar = (employee, className) => {
 
 // Shows the employees component.
 const Employees = () => {
+  // Gets current user.
   const { user } = useAuth();
+  // Stores employee list.
   const [employees, setEmployees] = useState([]);
+  // Tracks loading state.
   const [loading, setLoading] = useState(true);
+  // Stores search text.
   const [searchTerm, setSearchTerm] = useState('');
+  // Stores department filter.
   const [departmentFilter, setDepartmentFilter] = useState('');
+  // Stores profile filter.
   const [profileFilter, setProfileFilter] = useState('All Profiles');
+  // Stores selected employee.
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  // Controls add modal.
   const [showAddModal, setShowAddModal] = useState(false);
+  // Controls edit modal.
   const [showEditModal, setShowEditModal] = useState(false);
+  // Tracks status editing row.
   const [statusEditingId, setStatusEditingId] = useState(null);
+  // Stores current page.
   const [currentPage, setCurrentPage] = useState(1);
+  // Stores form values.
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -114,7 +126,9 @@ const Employees = () => {
     firstName: '',
     lastName: ''
   });
+  // Stores form errors.
   const [formErrors, setFormErrors] = useState({});
+  // Stores saved departments.
   const [savedDepartments, setSavedDepartments] = useState([]);
 
   const itemsPerPage = 5;
@@ -135,7 +149,7 @@ const Employees = () => {
     'Data'
   ];
 
-  // Gets saved departments data.
+  // Loads saved departments.
   const loadSavedDepartments = useCallback(() => {
     const departmentsFromStorage = JSON.parse(localStorage.getItem('departments') || '[]');
     setSavedDepartments(departmentsFromStorage);
@@ -161,14 +175,16 @@ const Employees = () => {
     loadEmployees();
     loadSavedDepartments();
 
-    // Handles departments updated actions.
+    // Reloads departments after changes.
     const handleDepartmentsUpdated = () => {
       loadSavedDepartments();
     };
 
+    // Listens for department updates.
     window.addEventListener('departmentsUpdated', handleDepartmentsUpdated);
 
     return () => {
+      // Removes department listener.
       window.removeEventListener('departmentsUpdated', handleDepartmentsUpdated);
     };
   }, [loadEmployees, loadSavedDepartments]);
@@ -176,22 +192,26 @@ const Employees = () => {
   // Prepares company employees.
   const companyEmployees = employees.filter(emp => (emp.companyId || 'company-a') === currentCompanyId);
 
-  // Get unique departments from employees, saved departments, and defaults.
+  // Builds unique department options.
   const departmentOptions = [
     ...new Set(
       [...companyEmployees.map(emp => emp.department), ...savedDepartments, ...defaultDepartments]
         .filter(Boolean)
     )
   ].sort((a, b) => a.localeCompare(b));
+  // Adds all departments option.
   const departments = ['All Departments', ...departmentOptions];
 
-  // Filter employees
+  // Filters employees for table.
   const filteredEmployees = companyEmployees.filter(emp => {
+    // Checks name or email search.
     const matchesSearch = searchTerm === '' || 
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // Checks department filter.
     const matchesDept = departmentFilter === '' || departmentFilter === 'All Departments' || emp.department === departmentFilter;
     const completion = calculateProfileCompletion(emp).percentage;
+    // Checks profile completion filter.
     const matchesProfile =
       profileFilter === 'All Profiles' ||
       (profileFilter === 'Incomplete Profiles' && completion < 100) ||
@@ -200,7 +220,7 @@ const Employees = () => {
     return matchesSearch && matchesDept && matchesProfile;
   });
 
-  // Prepares profile stats.
+  // Calculates profile stats.
   const profileStats = companyEmployees.reduce((stats, emp) => {
     const completion = calculateProfileCompletion(emp).percentage;
     return {
@@ -209,6 +229,7 @@ const Employees = () => {
       belowThreshold: stats.belowThreshold + (completion < PROFILE_COMPLETION_THRESHOLD ? 1 : 0)
     };
   }, { total: 0, incomplete: 0, belowThreshold: 0 });
+  // Calculates average completion.
   const averageCompletion = companyEmployees.length
     ? Math.round(profileStats.total / companyEmployees.length)
     : 0;
@@ -220,14 +241,16 @@ const Employees = () => {
     currentPage * itemsPerPage
   );
 
-  // Form validation
+  // Validates employee form.
   const validateForm = () => {
     const errors = {};
+    // Checks required fields.
     if (!formData.name.trim()) errors.name = 'Name is required';
     if (!formData.email.trim()) errors.email = 'Email is required';
     if (!formData.email.includes('@')) errors.email = 'Invalid email format';
     if (!formData.role) errors.role = 'Role is required';
     if (!formData.department) errors.department = 'Department is required';
+    // Saves validation errors.
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -295,13 +318,17 @@ const Employees = () => {
         avatar: formData.avatar || formData.name.charAt(0).toUpperCase(),
         companyId: currentCompanyId
       };
+      // Creates employee record.
       await createEmployee(employeeToAdd);
+      // Reloads employee list.
       await loadEmployees();
+      // Closes add modal.
       setShowAddModal(false);
+      // Clears form data.
       resetForm();
       toast.success('Employee added successfully!');
       
-      // 🟢 Notify dashboard about the change
+      //  Notify dashboard about the change
       notifyDashboardUpdate();
       addNotification({ type: 'success', title: 'Employee Added', message: `${employeeToAdd.name} added to ${employeeToAdd.department}` });
       
@@ -378,9 +405,11 @@ const Employees = () => {
       resetForm();
       toast.success('Employee updated successfully!');
       
-      // 🟢 Notify dashboard about the change
+      // Updates dashboard data.
       notifyDashboardUpdate();
+      // Shows update notification.
       addNotification({ type: 'success', title: 'Employee Updated', message: `${updatedEmployeeData.name} updated` });
+      // Warns for low completion.
       if (newCompletion < PROFILE_COMPLETION_THRESHOLD) {
         addNotification({
           type: 'warning',
@@ -388,6 +417,7 @@ const Employees = () => {
           message: `${updatedEmployeeData.name} is below ${PROFILE_COMPLETION_THRESHOLD}% profile completion`
         });
       }
+      // Shows complete profile message.
       if (oldCompletion < 100 && newCompletion === 100) {
         addNotification({
           type: 'success',
@@ -397,6 +427,7 @@ const Employees = () => {
       }
       
     } catch (error) {
+      // Shows update failure.
       toast.error('Failed to update employee');
     }
   };

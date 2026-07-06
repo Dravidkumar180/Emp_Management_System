@@ -37,9 +37,13 @@ const writeStorage = (key, value) => {
 
 // Shows the settings component.
 const Settings = () => {
+  // Gets theme settings.
   const { darkMode, toggleDarkMode } = useTheme();
+  // Gets logged-in user.
   const { user } = useAuth();
+  // Checks admin access.
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  // Gets user's company id.
   const userCompanyId = user?.companyId || user?.company_id || 'company-a';
 
   // Notification Settings
@@ -84,15 +88,18 @@ const Settings = () => {
     recipients: 'admin@empmanage.com'
   });
 
-  // Role Request State
+  // Role request state.
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsMessage, setRequestsMessage] = useState('');
   const [adminActionLoading, setAdminActionLoading] = useState(false);
+  // Account reactivation requests.
   const [reactivationRequests, setReactivationRequests] = useState([]);
   const [reactivationMessage, setReactivationMessage] = useState('');
+  // Account reinstatement requests.
   const [reinstatementRequests, setReinstatementRequests] = useState([]);
   const [reinstatementMessage, setReinstatementMessage] = useState('');
+  // Leave approval requests.
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveMessage, setLeaveMessage] = useState('');
 
@@ -119,29 +126,45 @@ const Settings = () => {
     sessionTimeout: true
   });
 
+  // Active tab
   const [activeTab, setActiveTab] = useState('roleRequest');
+  // Saving state
   const [saving, setSaving] = useState(false);
+  // Save message
   const [saveMessage, setSaveMessage] = useState('');
+  // Admin email
   const [adminEmail, setAdminEmail] = useState('');
+  // Current password
   const [currentPassword, setCurrentPassword] = useState('');
+  // Request loading
   const [requestLoading, setRequestLoading] = useState(false);
+  // Request message
   const [requestMessage, setRequestMessage] = useState('');
 
-  // Gets requests data.
+  // Load requests
   const loadRequests = async () => {
+    // Stop without user
     if (!user) return;
+    // Start loading
     setRequestsLoading(true);
+    // Clear message
     setRequestsMessage('');
     try {
+      // Get role requests
       const data = isAdmin
         ? await fetchPendingRoleRequests()
         : await fetchMyRoleRequests();
+      // Save requests
       setRequests(data);
+      // Load admin requests
       if (isAdmin) {
         const reactivationData = await fetchPendingReactivationRequests();
         const reinstatementData = await fetchReinstatementRequests();
+        // Save reactivation
         setReactivationRequests(reactivationData);
+        // Save reinstatement
         setReinstatementRequests(reinstatementData.filter((request) => request.status === 'pending'));
+        // Save leave requests
         setLeaveRequests(
           readStorage(LEAVE_REQUESTS_KEY).filter((request) => (
             request.companyId === userCompanyId && request.status === 'pending'
@@ -149,8 +172,10 @@ const Settings = () => {
         );
       }
     } catch (error) {
+      // Show load error
       setRequestsMessage(error.response?.data?.detail || 'Unable to load requests.');
     } finally {
+      // Stop loading
       setRequestsLoading(false);
     }
   };
@@ -162,116 +187,148 @@ const Settings = () => {
     }
   }, [activeTab, user, userCompanyId]);
 
-  // Handles role request actions.
+  // Submit role request
   const handleRoleRequest = async (event) => {
+    // Stop page refresh
     event.preventDefault();
+    // Check fields
     if (!adminEmail || !currentPassword) {
       setRequestMessage('Please provide both admin email and current password.');
       return;
     }
 
+    // Start request
     setRequestLoading(true);
+    // Clear message
     setRequestMessage('');
     try {
+      // Send role request
       await submitRoleChangeRequest(currentPassword, adminEmail);
+      // Show success
       setRequestMessage('Your role request has been submitted successfully.');
+      // Clear form
       setAdminEmail('');
       setCurrentPassword('');
+      // Refresh requests
       await loadRequests();
     } catch (error) {
+      // Show request error
       setRequestMessage(error.response?.data?.detail || 'Unable to submit the request.');
     } finally {
+      // Stop request
       setRequestLoading(false);
     }
   };
 
-  // Handles admin action actions.
+  // Handle admin action
   const handleAdminAction = async (requestId, action) => {
+    // Start action
     setAdminActionLoading(true);
+    // Clear message
     setRequestsMessage('');
     try {
+      // Approve request
       if (action === 'approve') {
         await approveRoleRequest(requestId);
         setRequestsMessage('Request approved successfully.');
       } else {
+        // Reject request
         await rejectRoleRequest(requestId);
         setRequestsMessage('Request rejected successfully.');
       }
+      // Refresh requests
       await loadRequests();
     } catch (error) {
+      // Show action error
       setRequestsMessage(error.response?.data?.detail || 'Unable to update the request.');
     } finally {
+      // Stop action
       setAdminActionLoading(false);
     }
   };
 
-  // Handles notification change actions.
+  // Updates admin notifications.
   const handleNotificationChange = (key, value) => {
     setNotificationSettings({ ...notificationSettings, [key]: value });
   };
 
-  // Handles attendance change actions.
+  // Updates attendance settings.
   const handleAttendanceChange = (key, value) => {
     setAttendanceSettings({ ...attendanceSettings, [key]: value });
   };
 
-  // Handles leave change actions.
+  // Updates leave settings.
   const handleLeaveChange = (key, value) => {
     setLeaveSettings({ ...leaveSettings, [key]: value });
   };
 
-  // Handles report change actions.
+  // Updates report settings.
   const handleReportChange = (key, value) => {
     setReportSettings({ ...reportSettings, [key]: value });
   };
 
-  // Handles appearance change actions.
+  // Updates admin appearance.
   const handleAppearanceChange = (key, value) => {
     setAppearanceSettings({ ...appearanceSettings, [key]: value });
+    // Switches light or dark mode.
     if (key === 'theme') {
       toggleDarkMode();
     }
   };
 
-  // Handles reactivation action actions.
+  // Handle reactivation
   const handleReactivationAction = async (requestId, action) => {
+    // Start action
     setAdminActionLoading(true);
+    // Clear message
     setReactivationMessage('');
     try {
+      // Approve reactivation
       if (action === 'approve') {
         await approveReactivationRequest(requestId);
         setReactivationMessage('Account reactivated successfully.');
       } else {
+        // Reject reactivation
         await rejectReactivationRequest(requestId);
         setReactivationMessage('Reactivation request rejected.');
       }
+      // Refresh requests
       await loadRequests();
     } catch (error) {
+      // Show update error
       setReactivationMessage(error.response?.data?.detail || 'Unable to update reactivation request.');
     } finally {
+      // Stop action
       setAdminActionLoading(false);
     }
   };
 
-  // Handles reinstatement action actions.
+  // Handle reinstatement
   const handleReinstatementAction = async (request, action) => {
+    // Start action
     setAdminActionLoading(true);
+    // Clear message
     setReinstatementMessage('');
     try {
+      // Check approval
       const approved = action === 'approve';
+      // Approve reinstatement
       if (approved) {
         await approveReinstatementRequest(request.id);
         setReinstatementMessage('Reinstatement request approved.');
       } else {
+        // Reject reinstatement
         await rejectReinstatementRequest(request.id);
         setReinstatementMessage('Reinstatement request rejected.');
       }
 
+      // Notify admin
       addNotification({
         type: approved ? 'success' : 'info',
         title: approved ? 'Reinstatement Approved' : 'Reinstatement Rejected',
         message: `${request.requester_name || request.requester_email}'s reinstatement request was ${approved ? 'approved' : 'rejected'}.`,
       });
+      // Notify requester
       createNotificationForUser(
         {
           name: request.requester_name,
@@ -288,50 +345,64 @@ const Settings = () => {
         }
       );
 
+      // Refresh requests
       await loadRequests();
     } catch (error) {
+      // Show update error
       setReinstatementMessage(error.response?.data?.detail || 'Unable to update reinstatement request.');
     } finally {
+      // Stop action
       setAdminActionLoading(false);
     }
   };
 
-  // Handles leave action actions.
+  // Handle leave action
   const handleLeaveAction = async (requestId, action) => {
+    // Start action
     setAdminActionLoading(true);
+    // Clear message
     setLeaveMessage('');
     try {
+      // Get leave requests
       const requests = readStorage(LEAVE_REQUESTS_KEY);
-      // Prepares old request.
+      // Old request
       const oldRequest = requests.find((request) => request.id === requestId);
       if (!oldRequest) {
         setLeaveMessage('Leave request not found.');
         return;
       }
 
+      // New status
       const nextStatus = action === 'approve' ? 'approved' : 'rejected';
+      // Updated request
       const updatedRequest = {
         ...oldRequest,
         status: nextStatus,
         reviewedAt: new Date().toISOString(),
         reviewedBy: user?.name || user?.email || 'Admin',
       };
-      // Prepares next requests.
+      // Next requests
       const nextRequests = requests.map((request) => (
         request.id === requestId ? updatedRequest : request
       ));
+      // Save requests
       writeStorage(LEAVE_REQUESTS_KEY, nextRequests);
+      // Refresh pending leave
       setLeaveRequests(nextRequests.filter((request) => (
         request.companyId === userCompanyId && request.status === 'pending'
       )));
 
+      // Check approval
       const approved = nextStatus === 'approved';
+      // Show leave message
       setLeaveMessage(`Leave request ${nextStatus} successfully.`);
+      // Notify admin
       addNotification({
         type: approved ? 'success' : 'info',
         title: approved ? 'Leave Approved' : 'Leave Rejected',
         message: `${updatedRequest.name || updatedRequest.email}'s ${updatedRequest.type} leave was ${nextStatus}.`,
       });
+      // Audit log
       await logAuditAction({
         action: approved ? 'Leave Request Approved' : 'Leave Request Rejected',
         entityType: 'attendance',
@@ -342,15 +413,19 @@ const Settings = () => {
         newValue: updatedRequest,
       });
     } catch (error) {
+      // Show leave error
       setLeaveMessage('Unable to update leave request.');
     } finally {
+      // Stop action
       setAdminActionLoading(false);
     }
   };
 
-  // Prepares persist user settings.
+  // Save user settings
   const persistUserSettings = (updates = {}) => {
+    // Get saved settings
     const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+    // Store new settings
     localStorage.setItem('appSettings', JSON.stringify({
       ...savedSettings,
       notifications: updates.notifications || notificationSettings,
@@ -360,43 +435,50 @@ const Settings = () => {
     }));
   };
 
-  // Handles profile change actions.
+  // Update profile
   const handleProfileChange = (key, value) => {
+    // Saves changed profile field.
     const nextProfile = { ...profileSettings, [key]: value };
     setProfileSettings(nextProfile);
     persistUserSettings({ profile: nextProfile });
   };
 
-  // Handles security change actions.
+  // Update security
   const handleSecurityChange = (key, value) => {
+    // Saves changed security field.
     const nextSecurity = { ...securitySettings, [key]: value };
     setSecuritySettings(nextSecurity);
     persistUserSettings({ security: nextSecurity });
   };
 
-  // Handles user notification change actions.
+  // Update notifications
   const handleUserNotificationChange = (key, value) => {
+    // Saves changed notification field.
     const nextNotifications = { ...notificationSettings, [key]: value };
     setNotificationSettings(nextNotifications);
     persistUserSettings({ notifications: nextNotifications });
   };
 
-  // Handles user appearance change actions.
+  // Update appearance
   const handleUserAppearanceChange = (key, value) => {
+    // Saves changed appearance field.
     const nextAppearance = { ...appearanceSettings, [key]: value };
     setAppearanceSettings(nextAppearance);
     persistUserSettings({ appearance: nextAppearance });
 
+    // Toggle theme
     if (key === 'theme' && value !== appearanceSettings.theme) {
       toggleDarkMode();
     }
   };
 
-  // Saves all settings.
+  // Save all settings
   const saveAllSettings = () => {
+    // Start saving
     setSaving(true);
-    // Simulate saving to backend
+    // Simulate backend save
     setTimeout(() => {
+      // Store settings
       localStorage.setItem('appSettings', JSON.stringify({
         notifications: notificationSettings,
         attendance: attendanceSettings,
@@ -404,12 +486,16 @@ const Settings = () => {
         report: reportSettings,
         appearance: appearanceSettings
       }));
+      // Stop saving
       setSaving(false);
+      // Show success
       setSaveMessage('Settings saved successfully!');
+      // Clear success
       setTimeout(() => setSaveMessage(''), 3000);
     }, 1000);
   };
 
+  // Notification helper
   const { addNotification } = useNotifications();
 
   // Runs when this screen needs to update data.
@@ -427,7 +513,9 @@ const Settings = () => {
     const savedSettings = localStorage.getItem('appSettings');
     if (savedSettings) {
       try {
+        // Converts saved settings text.
         const parsed = JSON.parse(savedSettings);
+        // Restores saved sections.
         if (parsed.notifications) setNotificationSettings(parsed.notifications);
         if (parsed.attendance) setAttendanceSettings(parsed.attendance);
         if (parsed.leave) setLeaveSettings(parsed.leave);
@@ -436,6 +524,7 @@ const Settings = () => {
         if (parsed.profile) setProfileSettings(parsed.profile);
         if (parsed.security) setSecuritySettings(parsed.security);
       } catch (e) {
+        // Shows saved settings error.
         console.error('Error loading settings:', e);
       }
     }

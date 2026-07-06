@@ -42,13 +42,17 @@ const readJson = (key, fallback) => {
   }
 };
 
-// Writes employee notification.
+// Employee notice
 const writeEmployeeNotification = (employee, transfer) => {
+  // Skip missing email
   if (!employee?.email) return;
 
+  // User company
   const companyId = employee.companyId || employee.company_id || 'company-a';
+  // Notification key
   const storageKey = `notifications:${employee.email}:user:${companyId}`;
   const notifications = readJson(storageKey, []);
+  // New notification
   const nextNotification = {
     id: `transfer-${Date.now()}`,
     type: 'info',
@@ -57,6 +61,7 @@ const writeEmployeeNotification = (employee, transfer) => {
     time: new Date().toISOString()
   };
 
+  // Save notification
   localStorage.setItem(storageKey, JSON.stringify([nextNotification, ...notifications]));
 };
 
@@ -75,22 +80,38 @@ const formatDateTime = (value) => {
 
 // Shows the department transfer component.
 const DepartmentTransfer = () => {
+  // Current user
   const { user } = useAuth();
+  // App notification
   const { addNotification } = useNotifications();
+  // Employee list
   const [employees, setEmployees] = useState([]);
+  // Transfer list
   const [transfers, setTransfers] = useState([]);
+  // Selected employee
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  // From department
   const [currentDepartment, setCurrentDepartment] = useState('');
+  // To department
   const [toDepartment, setToDepartment] = useState('');
+  // Transfer date
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
+  // Transfer reason
   const [reason, setReason] = useState('');
+  // Loading
   const [loading, setLoading] = useState(true);
+  // Show all
   const [showAll, setShowAll] = useState(false);
+  // Full history
   const [showFullHistory, setShowFullHistory] = useState(false);
+  // Filter panel
   const [showHistoryFilters, setShowHistoryFilters] = useState(false);
+  // Department filter
   const [historyDepartmentFilter, setHistoryDepartmentFilter] = useState('All Departments');
+  // Status filter
   const [historyStatusFilter, setHistoryStatusFilter] = useState('All Statuses');
 
+  // Current company
   const currentCompanyId = user?.companyId || user?.company_id || 'company-a';
 
   // Runs when this screen needs to update data.
@@ -147,20 +168,27 @@ const DepartmentTransfer = () => {
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
   }, [transfers]);
-  // Helps with filtered history transfers.
+  // Filter history
   const filteredHistoryTransfers = useMemo(() => {
     return transfers.filter((transfer) => {
+      // Transfer status
       const status = transfer.status || 'Completed';
+      // Department match
       const matchesDepartment = historyDepartmentFilter === 'All Departments'
         || transfer.fromDepartment === historyDepartmentFilter
         || transfer.toDepartment === historyDepartmentFilter;
+      // Status match
       const matchesStatus = historyStatusFilter === 'All Statuses' || status === historyStatusFilter;
 
+      // Keep matching
       return matchesDepartment && matchesStatus;
     });
   }, [historyDepartmentFilter, historyStatusFilter, transfers]);
+  // Visible history
   const historyTransfers = showFullHistory ? filteredHistoryTransfers : filteredHistoryTransfers.slice(0, 5);
+  // Has filters
   const hasHistoryFilters = historyDepartmentFilter !== 'All Departments' || historyStatusFilter !== 'All Statuses';
+  // Form ready
   const isTransferReady = Boolean(
     selectedEmployee && currentDepartment && toDepartment && effectiveDate && reason.trim() && transferTargets.length
   );
@@ -214,6 +242,7 @@ const DepartmentTransfer = () => {
       transferredBy: user?.name || user?.email || 'Admin'
     };
 
+    // Updated employee
     const updatedEmployee = {
       ...selectedEmployee,
       department: toDepartment,
@@ -222,23 +251,29 @@ const DepartmentTransfer = () => {
     };
 
     try {
+      // Save employee
       await updateEmployee(selectedEmployee.id, updatedEmployee);
 
+      // Save transfer
       const allTransfers = readJson(TRANSFERS_KEY, []);
       const nextTransfers = [transfer, ...allTransfers];
       localStorage.setItem(TRANSFERS_KEY, JSON.stringify(nextTransfers));
       setTransfers((prev) => [transfer, ...prev]);
+      // Update employee list
       setEmployees((prev) => prev.map((employee) => (
         employee.id === selectedEmployee.id ? updatedEmployee : employee
       )));
 
+      // Notify employee
       writeEmployeeNotification(selectedEmployee, transfer);
+      // Notify admin
       addNotification({
         type: 'success',
         title: 'Employee Transferred',
         message: `${selectedEmployee.name} moved to ${toDepartment}.`
       });
 
+      // Audit log
       await logAuditAction({
         action: 'Department Transfer',
         entityType: 'employee',
@@ -252,16 +287,21 @@ const DepartmentTransfer = () => {
         }
       });
 
+      // Refresh employees
       window.dispatchEvent(new CustomEvent('employeesUpdated', {
         detail: { message: 'Employee department transfer completed' }
       }));
+      // Success message
       toast.success('Employee transferred successfully');
+      // Clear form
       resetForm();
     } catch (error) {
+      // Error message
       toast.error('Failed to transfer employee');
     }
   };
 
+  // Loading screen
   if (loading) {
     return (
       <div className="transfer-loading">

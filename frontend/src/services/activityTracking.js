@@ -21,8 +21,9 @@ const normalizeCompanyId = (companyId) => {
 // Reads records from storage.
 const readRecords = () => {
   try {
+    // Gets saved activity records.
     const records = JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY) || '[]');
-    // Prepares cleaned records.
+    // Removes old demo records.
     const cleanedRecords = records.filter((record) => !record.demoActivityVersion);
     if (cleanedRecords.length !== records.length) {
       writeRecords(cleanedRecords);
@@ -68,11 +69,14 @@ const getStoredCompanyForEmail = (email) => {
 
 // Gets browser info data.
 const getBrowserInfo = () => {
+  // Handles server-side use.
   if (typeof navigator === 'undefined') return 'Unknown browser';
 
+  // Reads browser details.
   const userAgent = navigator.userAgent || '';
   const platform = navigator.platform || 'Unknown OS';
 
+  // Browser match rules.
   const browserRules = [
     [/Edg\/([\d.]+)/, 'Edge'],
     [/Chrome\/([\d.]+)/, 'Chrome'],
@@ -80,6 +84,7 @@ const getBrowserInfo = () => {
     [/Version\/([\d.]+).*Safari/, 'Safari'],
   ];
 
+  // Finds current browser.
   const match = browserRules
     .map(([regex, name]) => {
       const found = userAgent.match(regex);
@@ -92,23 +97,26 @@ const getBrowserInfo = () => {
 
 // Gets stable demo ip data.
 const getStableDemoIp = (user) => {
+  // Gets company IP list.
   const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const companyIps = DEMO_IPS[companyId] || DEMO_IPS['company-a'];
   const email = normalizeEmail(user?.email);
-  // Prepares hash.
+  // Makes stable email hash.
   const hash = email.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return companyIps[hash % companyIps.length];
 };
 
 // Gets public ip data.
 const fetchPublicIp = async (fallbackIp) => {
+  // Uses fallback without fetch.
   if (typeof fetch === 'undefined') return fallbackIp;
 
   const controller = new AbortController();
-  // Prepares timeout ID.
+  // Stops slow IP request.
   const timeoutId = setTimeout(() => controller.abort(), 1500);
 
   try {
+    // Gets public IP address.
     const response = await fetch('https://api.ipify.org?format=json', {
       signal: controller.signal,
       cache: 'no-store',
@@ -116,6 +124,7 @@ const fetchPublicIp = async (fallbackIp) => {
     const data = await response.json();
     return data?.ip || fallbackIp;
   } catch {
+    // Uses fallback on error.
     return fallbackIp;
   } finally {
     clearTimeout(timeoutId);
@@ -124,16 +133,19 @@ const fetchPublicIp = async (fallbackIp) => {
 
 // Adds or updates record.
 const upsertRecord = (user, changes) => {
+  // Stops without email.
   if (!user?.email) return null;
 
+  // Reads existing records.
   const records = readRecords();
   const email = normalizeEmail(user.email);
   const companyId = normalizeCompanyId(user.companyId || user.company_id);
-  // Prepares existing index.
+  // Finds existing record.
   const existingIndex = records.findIndex((record) => (
     normalizeEmail(record.email) === email && normalizeCompanyId(record.companyId) === companyId
   ));
   const existing = existingIndex >= 0 ? records[existingIndex] : {};
+  // Builds updated record.
   const nextRecord = {
     id: existing.id || `${companyId}:${email}`,
     userId: user.id || existing.userId || email,
@@ -150,6 +162,7 @@ const upsertRecord = (user, changes) => {
     ...changes,
   };
 
+  // Updates or adds record.
   if (existingIndex >= 0) {
     records[existingIndex] = nextRecord;
   } else {
@@ -163,6 +176,7 @@ const upsertRecord = (user, changes) => {
 // Adds history.
 const appendHistory = (record, type, timestamp) => ({
   ...record,
+  // Adds newest activity first.
   history: [
     {
       type,
@@ -176,9 +190,11 @@ const appendHistory = (record, type, timestamp) => ({
 
 // Records signup activity.
 export const recordSignupActivity = async (user) => {
+  // Creates signup timestamp.
   const timestamp = new Date().toISOString();
   const browser = getBrowserInfo();
   const ipAddress = await fetchPublicIp(getStableDemoIp(user));
+  // Saves signup details.
   const baseRecord = upsertRecord(user, {
     signupAt: timestamp,
     browser,
@@ -186,7 +202,9 @@ export const recordSignupActivity = async (user) => {
     status: 'Active',
   });
 
+  // Stops if record failed.
   if (!baseRecord) return null;
+  // Adds signup history.
   const nextRecord = appendHistory(baseRecord, 'signup', timestamp);
   upsertRecord(user, nextRecord);
   return nextRecord;
@@ -194,9 +212,11 @@ export const recordSignupActivity = async (user) => {
 
 // Records login activity.
 export const recordLoginActivity = async (user) => {
+  // Creates login timestamp.
   const timestamp = new Date().toISOString();
   const browser = getBrowserInfo();
   const ipAddress = await fetchPublicIp(getStableDemoIp(user));
+  // Saves login details.
   const baseRecord = upsertRecord(user, {
     lastLogin: timestamp,
     browser,
@@ -204,7 +224,9 @@ export const recordLoginActivity = async (user) => {
     status: 'Active',
   });
 
+  // Stops if record failed.
   if (!baseRecord) return null;
+  // Adds login history.
   const nextRecord = appendHistory(baseRecord, 'login', timestamp);
   upsertRecord(user, nextRecord);
   return nextRecord;
@@ -212,13 +234,17 @@ export const recordLoginActivity = async (user) => {
 
 // Records logout activity.
 export const recordLogoutActivity = (user) => {
+  // Creates logout timestamp.
   const timestamp = new Date().toISOString();
+  // Saves logout details.
   const baseRecord = upsertRecord(user, {
     lastLogout: timestamp,
     status: 'Inactive',
   });
 
+  // Stops if record failed.
   if (!baseRecord) return null;
+  // Adds logout history.
   const nextRecord = appendHistory(baseRecord, 'logout', timestamp);
   upsertRecord(user, nextRecord);
   return nextRecord;
@@ -229,19 +255,22 @@ export const getActivityRecords = () => readRecords();
 
 // Prepares ensure legacy account history.
 export const ensureLegacyAccountHistory = () => {
+  // Gets current records.
   const records = readRecords();
   const now = new Date();
 
+  // Adds history for old accounts.
   LEGACY_ACCOUNTS.forEach((account, accountIndex) => {
     const email = normalizeEmail(account.email);
-    // Prepares existing record.
+    // Finds existing record.
     const existingRecord = records.find((record) => normalizeEmail(record.email) === email);
+    // Gets account company.
     const companyId = normalizeCompanyId(
       existingRecord?.companyId
       || getStoredCompanyForEmail(account.email)
       || account.fallbackCompanyId
     );
-    // Prepares existing index.
+    // Finds matching company record.
     const existingIndex = records.findIndex((record) => (
       normalizeEmail(record.email) === email && normalizeCompanyId(record.companyId) === companyId
     ));
@@ -249,10 +278,11 @@ export const ensureLegacyAccountHistory = () => {
     const browser = existing.browser || LEGACY_BROWSERS[accountIndex % LEGACY_BROWSERS.length];
     const ipAddress = existing.ipAddress || getStableDemoIp({ ...account, companyId });
     const history = Array.isArray(existing.history) ? [...existing.history] : [];
-    // Prepares already backfilled.
+    // Checks backfill already done.
     const alreadyBackfilled = history.some((item) => item.legacyHistoryVersion === LEGACY_HISTORY_VERSION);
 
     if (!alreadyBackfilled) {
+      // Creates sample sessions.
       for (let sessionIndex = 0; sessionIndex < 3; sessionIndex += 1) {
         const loginAt = new Date(now);
         loginAt.setDate(now.getDate() - (accountIndex + 1) * 2 - sessionIndex);
@@ -278,12 +308,13 @@ export const ensureLegacyAccountHistory = () => {
       }
     }
 
-    // Helps with sorted history.
+    // Sorts latest history first.
     const sortedHistory = history.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-    // Prepares last login.
+    // Gets latest login.
     const lastLogin = sortedHistory.find((item) => item.type === 'login')?.timestamp || existing.lastLogin;
-    // Prepares last logout.
+    // Gets latest logout.
     const lastLogout = sortedHistory.find((item) => item.type === 'logout')?.timestamp || existing.lastLogout;
+    // Builds legacy record.
     const nextRecord = {
       id: existing.id || `${companyId}:${email}`,
       userId: existing.userId || email,
@@ -301,20 +332,24 @@ export const ensureLegacyAccountHistory = () => {
       history: sortedHistory,
     };
 
+    // Updates existing record.
     if (existingIndex >= 0) {
       records[existingIndex] = nextRecord;
       return;
     }
 
+    // Replaces old matching record.
     if (existingRecord) {
       const oldIndex = records.indexOf(existingRecord);
       records[oldIndex] = nextRecord;
       return;
     }
 
+    // Adds new legacy record.
     records.push(nextRecord);
   });
 
+  // Saves all records.
   writeRecords(records);
   return records;
 };

@@ -139,6 +139,7 @@ const Attendance = () => {
       return;
     }
 
+    // Creates new attendance access request.
     const request = {
       id: Date.now(),
       email: userEmail,
@@ -149,9 +150,11 @@ const Attendance = () => {
       reviewedAt: null,
       reviewedBy: null,
     };
+    // Saves newest request first.
     const nextRequests = [request, ...requests];
     writeStorage(ACCESS_REQUESTS_KEY, nextRequests);
     setAccessRequests(nextRequests);
+    // Records access request in audit.
     logAuditAction({
       action: 'Attendance Access Requested',
       entityType: 'attendance',
@@ -255,8 +258,11 @@ const Attendance = () => {
   // Handles date change actions.
   const handleDateChange = async (e) => {
     const nextDate = e.target.value;
+    // Updates selected attendance date.
     setSelectedDate(nextDate);
+    // Shows date change notification.
     addNotification({ type: 'info', title: 'Attendance Date', message: `Viewing attendance for ${nextDate}` });
+    // Records attendance date view.
     await logAuditAction({
       action: 'Attendance Viewed',
       entityType: 'attendance',
@@ -369,11 +375,15 @@ const Attendance = () => {
       status: 'pending',
       submittedAt: new Date().toISOString(),
     };
+    // Saves newest leave request first.
     const requests = [request, ...readStorage(LEAVE_REQUESTS_KEY)];
     writeStorage(LEAVE_REQUESTS_KEY, requests);
     setLeaveRequests(requests);
+    // Clears leave request form.
     setLeaveForm({ type: 'Vacation', startDate: '', endDate: '', reason: '' });
+    // Shows leave request success message.
     addNotification({ type: 'success', title: 'Leave Requested', message: 'Your leave request was submitted.' });
+    // Records leave request in audit.
     await logAuditAction({
       action: 'Leave Request Submitted',
       entityType: 'attendance',
@@ -398,16 +408,19 @@ const Attendance = () => {
         Hours: r.hoursWorked || '-',
       }));
 
+      // Stops download when no records.
       if (rows.length === 0) {
         addNotification({ type: 'info', title: 'Download Report', message: 'No records to download' });
         return;
       }
 
+      // Converts attendance rows to CSV.
       const headers = Object.keys(rows[0]);
       const csvContent = [headers.join(',')].concat(
         rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))
       ).join('\n');
 
+      // Creates downloadable CSV file.
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -419,7 +432,9 @@ const Attendance = () => {
       a.remove();
       URL.revokeObjectURL(url);
 
+      // Shows report download success.
       addNotification({ type: 'success', title: 'Report Downloaded', message: `Report saved as ${fileName}` });
+      // Records report download in audit.
       logAuditAction({
         action: 'Attendance Report Downloaded',
         entityType: 'attendance',
@@ -429,6 +444,7 @@ const Attendance = () => {
       });
     } catch (e) {
       console.error('Download failed', e);
+      // Shows report download failure.
       addNotification({ type: 'warning', title: 'Download Failed', message: 'Could not generate report' });
     }
   };
@@ -618,6 +634,7 @@ const Attendance = () => {
         <p>Track daily attendance records by employee.</p>
       </div>
 
+      {/* Shows banner when date is holiday. */}
       {selectedDateHoliday && (
         <div className="holiday-attendance-banner admin-holiday-banner">
           <strong>{formatHolidayDate(selectedDate)} is a holiday: {selectedDateHoliday.name}</strong>

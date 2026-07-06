@@ -34,7 +34,7 @@ const companyNameFromId = (companyId) => {
   return 'Company A';
 };
 
-// Reads data from storage.
+// Reads saved data.
 const readStorage = (key, fallback = []) => {
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
@@ -48,18 +48,22 @@ const writeStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-// Helps with format date.
+// Formats only date.
 const formatDate = (value) => {
+  // Handles empty date.
   if (!value) return '-';
   const date = new Date(value);
+  // Handles invalid date.
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// Helps with format date time.
+// Formats date and time.
 const formatDateTime = (value) => {
+  // Handles empty time.
   if (!value) return '-';
   const date = new Date(value);
+  // Handles invalid time.
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString('en-GB', {
     day: '2-digit',
@@ -89,18 +93,22 @@ const escapePdfText = (value) => String(value ?? '')
   .replace(/\(/g, '\\(')
   .replace(/\)/g, '\\)');
 
-// Helps with build csv.
+// Builds CSV content.
 const buildCsv = (rows) => {
+  // Stops when no rows.
   if (!rows.length) return '';
+  // Gets table headers.
   const headers = Object.keys(rows[0]);
   return [headers.join(',')]
     .concat(rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(',')))
     .join('\n');
 };
 
-// Helps with build excel html.
+// Builds Excel HTML.
 const buildExcelHtml = (rows, title) => {
+  // Gets table headers.
   const headers = rows.length ? Object.keys(rows[0]) : ['No Data'];
+  // Builds table rows.
   const body = rows.length
     ? rows.map((row) => `<tr>${headers.map((header) => `<td>${escapeHtml(row[header])}</td>`).join('')}</tr>`).join('')
     : '<tr><td>No records found</td></tr>';
@@ -119,14 +127,18 @@ const buildExcelHtml = (rows, title) => {
   `;
 };
 
-// Helps with build pdf.
+// Builds PDF content.
 const buildPdf = (rows, title) => {
+  // Adds PDF title lines.
   const lines = [title, `Generated: ${formatDateTime(new Date().toISOString())}`, ''];
   const headers = rows.length ? Object.keys(rows[0]) : [];
+  // Adds limited preview rows.
   rows.slice(0, 22).forEach((row) => {
     lines.push(headers.map((header) => `${header}: ${row[header] ?? '-'}`).join(' | ').slice(0, 105));
   });
+  // Shows omitted row count.
   if (rows.length > 22) lines.push(`... ${rows.length - 22} more records omitted in PDF preview`);
+  // Shows empty PDF message.
   if (!rows.length) lines.push('No records found');
 
   // Prepares text commands.
@@ -140,7 +152,7 @@ const buildPdf = (rows, title) => {
   ];
   let offset = '%PDF-1.4\n'.length;
   const xref = ['0000000000 65535 f '];
-  // Prepares body.
+  // Builds PDF body.
   const body = objects.map((object) => {
     xref.push(String(offset).padStart(10, '0') + ' 00000 n ');
     offset += object.length + 1;
@@ -150,16 +162,20 @@ const buildPdf = (rows, title) => {
   return `%PDF-1.4\n${body}\nxref\n0 ${objects.length + 1}\n${xref.join('\n')}\ntrailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${startXref}\n%%EOF`;
 };
 
-// Coordinates download file behavior.
+// Downloads generated file.
 const downloadFile = ({ content, fileName, mimeType }) => {
+  // Creates file blob.
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
+  // Creates download link.
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = fileName;
+  // Starts file download.
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
+  // Clears temporary URL.
   URL.revokeObjectURL(url);
 };
 
@@ -258,21 +274,35 @@ const Icon = ({ name, size = 22 }) => {
 
 // Shows the export component.
 const Export = () => {
+  // Gets current user.
   const { user } = useAuth();
+  // Gets notifications.
   const { addNotification, notifications } = useNotifications();
+  // Gets current company.
   const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const companyName = companyNameFromId(companyId);
   const historyKey = `${EXPORT_HISTORY_PREFIX}:${companyId}`;
+  // Stores selected data.
   const [selectedData, setSelectedData] = useState(['employees', 'attendance', 'leaveRequests']);
+  // Stores export format.
   const [format, setFormat] = useState('csv');
+  // Stores start date.
   const [dateFrom, setDateFrom] = useState(toDateValue(new Date(Date.now() - 18 * 24 * 60 * 60 * 1000)));
+  // Stores end date.
   const [dateTo, setDateTo] = useState(toDateValue(new Date()));
+  // Stores department filter.
   const [department, setDepartment] = useState('all');
+  // Stores status filter.
   const [employeeStatus, setEmployeeStatus] = useState('all');
+  // Stores employees.
   const [employees, setEmployees] = useState([]);
+  // Stores audit logs.
   const [auditLogs, setAuditLogs] = useState([]);
+  // Stores export history.
   const [history, setHistory] = useState(() => readStorage(historyKey));
+  // Stores preview rows.
   const [previewRows, setPreviewRows] = useState([]);
+  // Stores preview title.
   const [previewTitle, setPreviewTitle] = useState('');
 
   // Runs when this screen needs to update data.
@@ -312,9 +342,11 @@ const Export = () => {
     [...new Set(companyEmployees.map((employee) => employee.department).filter(Boolean))].sort()
   ), [companyEmployees]);
 
-  // Helps with filtered employees.
+  // Filters company employees.
   const filteredEmployees = useMemo(() => companyEmployees.filter((employee) => {
+    // Checks department filter.
     const matchesDepartment = department === 'all' || employee.department === department;
+    // Checks status filter.
     const matchesStatus = employeeStatus === 'all' || employee.status === employeeStatus;
     return matchesDepartment && matchesStatus;
   }), [companyEmployees, department, employeeStatus]);
@@ -342,11 +374,14 @@ const Export = () => {
     time: notification.time,
   })), [notifications]);
 
-  // Prepares date in range.
+  // Checks date range.
   const dateInRange = (value) => {
+    // Allows missing dates.
     if (!value) return true;
     const time = new Date(value).getTime();
+    // Builds range start.
     const start = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : Number.NEGATIVE_INFINITY;
+    // Builds range end.
     const end = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : Number.POSITIVE_INFINITY;
     return time >= start && time <= end;
   };
@@ -425,19 +460,22 @@ const Export = () => {
   // Prepares total records.
   const totalRecords = selectedDatasets.reduce((total, dataset) => total + (datasetRows[dataset.id]?.length || 0), 0);
 
-  // Coordinates update history behavior.
+  // Updates export history.
   const updateHistory = (entries) => {
+    // Keeps latest exports.
     const nextHistory = [...entries, ...readStorage(historyKey)].slice(0, 25);
     writeStorage(historyKey, nextHistory);
     setHistory(nextHistory);
   };
 
-  // Helps with build export file.
+  // Builds selected export file.
   const buildExportFile = (dataset, rows, exportFormat) => {
+    // Builds safe file name.
     const exportedOn = new Date().toISOString();
     const safeTitle = sanitizeFileName(dataset.label);
     const fileBase = `${safeTitle}-${companyId}-${toDateValue(new Date(exportedOn))}`;
 
+    // Builds Excel file.
     if (exportFormat === 'excel') {
       return {
         content: buildExcelHtml(rows, `${dataset.label} Export`),
@@ -446,6 +484,7 @@ const Export = () => {
       };
     }
 
+    // Builds PDF file.
     if (exportFormat === 'pdf') {
       return {
         content: buildPdf(rows, `${dataset.label} Export - ${companyName}`),
@@ -454,6 +493,7 @@ const Export = () => {
       };
     }
 
+    // Builds CSV file.
     return {
       content: buildCsv(rows),
       fileName: `${fileBase}.csv`,
@@ -461,7 +501,7 @@ const Export = () => {
     };
   };
 
-  // Handles toggle dataset actions.
+  // Toggles selected dataset.
   const handleToggleDataset = (datasetId) => {
     setSelectedData((current) => (
       current.includes(datasetId)
@@ -470,18 +510,22 @@ const Export = () => {
     ));
   };
 
-  // Handles preview actions.
+  // Opens export preview.
   const handlePreview = async () => {
     const dataset = selectedDatasets[0];
+    // Requires selected dataset.
     if (!dataset) {
       addNotification({ type: 'warning', title: 'Export Preview', message: 'Select at least one data type to preview.' });
       return;
     }
 
+    // Shows first preview rows.
     const rows = datasetRows[dataset.id] || [];
     setPreviewRows(rows.slice(0, 8));
     setPreviewTitle(`${dataset.label} Preview`);
+    // Shows preview notification.
     addNotification({ type: 'info', title: 'Export Previewed', message: `${dataset.label} preview opened for ${companyName}.` });
+    // Records preview in audit.
     await logAuditAction({
       action: 'Export Previewed',
       entityType: 'data_export',
@@ -491,21 +535,25 @@ const Export = () => {
     });
   };
 
-  // Handles generate export actions.
+  // Generates export files.
   const handleGenerateExport = async () => {
+    // Requires selected data.
     if (selectedDatasets.length === 0) {
       addNotification({ type: 'warning', title: 'Export Required', message: 'Select at least one data type to export.' });
       return;
     }
 
+    // Stores export details.
     const exportedOn = new Date().toISOString();
     const exportedBy = user?.name || user?.email?.split('@')[0] || 'Admin';
     const entries = [];
 
+    // Downloads each dataset file.
     selectedDatasets.forEach((dataset) => {
       const rows = datasetRows[dataset.id] || [];
       const file = buildExportFile(dataset, rows, format);
       downloadFile(file);
+      // Saves export history entry.
       entries.push({
         id: `${Date.now()}-${dataset.id}`,
         exportedBy,

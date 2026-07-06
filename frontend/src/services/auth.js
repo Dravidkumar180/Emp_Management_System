@@ -10,9 +10,37 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Register new user
+const getBrowserInfo = () => {
+  const userAgent = navigator.userAgent || '';
+  const platform = navigator.platform || 'Unknown OS';
+  const rules = [
+    [/Edg\/([\d.]+)/, 'Edge'],
+    [/Chrome\/([\d.]+)/, 'Chrome'],
+    [/Firefox\/([\d.]+)/, 'Firefox'],
+    [/Version\/([\d.]+).*Safari/, 'Safari'],
+  ];
+  const browser = rules
+    .map(([regex, name]) => {
+      const match = userAgent.match(regex);
+      return match ? `${name} ${match[1].split('.')[0]}` : null;
+    })
+    .find(Boolean) || 'Browser';
+  return `${platform} · ${browser}`;
+};
+
+const getDeviceName = () => {
+  const platform = navigator.platform || 'Device';
+  if (/iphone/i.test(navigator.userAgent)) return 'iPhone';
+  if (/android/i.test(navigator.userAgent)) return 'Android Mobile';
+  if (/mac/i.test(platform)) return 'Mac Device';
+  if (/win/i.test(platform)) return 'Windows Device';
+  return platform;
+};
+
+// Registers new user.
 export const registerUser = async (name, email, password, role = 'user', companyId = 'company-a', inviteToken = null) => {
   try {
+    // Sends signup data.
     const response = await api.post('/auth/register', {
       name,
       email,
@@ -24,23 +52,30 @@ export const registerUser = async (name, email, password, role = 'user', company
     toast.success('Registration successful! Please login.');
     return response.data;
   } catch (error) {
+    // Shows signup error.
     console.error('Register error:', error);
     toast.error(error.response?.data?.detail || 'Registration failed');
     throw error;
   }
 };
 
-// Login user
+// Logs in user.
 export const loginUser = async (email, password, companyId = 'company-a') => {
   try {
+    // Sends login data.
     const response = await api.post('/auth/login', {
       email,
       password,
-      company_id: companyId
+      company_id: companyId,
+      browser: getBrowserInfo(),
+      device_name: getDeviceName(),
+      device_info: navigator.userAgent || 'Unknown device',
+      location: 'Unknown Location'
     });
     toast.success(`Welcome back, ${response.data.user.name}!`);
     return response.data;
   } catch (error) {
+    // Shows login error.
     console.error('Login error:', error);
     toast.error(error.response?.data?.detail || 'Invalid credentials');
     throw error;
@@ -50,6 +85,7 @@ export const loginUser = async (email, password, companyId = 'company-a') => {
 // Helps with reset password.
 export const resetPassword = async (email, password) => {
   try {
+    // Sends new password.
     const response = await api.post('/auth/forgot-password', {
       email,
       password,
@@ -58,20 +94,23 @@ export const resetPassword = async (email, password) => {
     toast.success('Password has been reset successfully');
     return response.data;
   } catch (error) {
+    // Shows reset error.
     console.error('Reset password error:', error);
     toast.error(error.response?.data?.detail || 'Password reset failed');
     throw error;
   }
 };
 
-// Get current user
+// Gets current user.
 export const getCurrentUser = async (token) => {
   try {
+    // Sends token to verify user.
     const response = await api.get('/auth/me', {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
   } catch (error) {
+    // Returns null if invalid.
     console.error('Get user error:', error);
     return null;
   }
@@ -80,10 +119,13 @@ export const getCurrentUser = async (token) => {
 // Coordinates submit role change request behavior.
 export const submitRoleChangeRequest = async (currentPassword, adminEmail) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Cleans admin email.
     const normalizedAdminEmail = adminEmail.trim().toLowerCase();
+    // Sends role request.
     const response = await api.post(
       '/auth/role-request',
       {
@@ -106,9 +148,11 @@ export const submitRoleChangeRequest = async (currentPassword, adminEmail) => {
 // Gets pending role requests data.
 export const fetchPendingRoleRequests = async () => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Gets pending admin requests.
     const response = await api.get('/auth/role-requests/pending', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -122,9 +166,11 @@ export const fetchPendingRoleRequests = async () => {
 // Gets my role requests data.
 export const fetchMyRoleRequests = async () => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Gets user's role requests.
     const response = await api.get('/auth/role-requests', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -138,9 +184,11 @@ export const fetchMyRoleRequests = async () => {
 // Gets admin reviewers data.
 export const fetchAdminReviewers = async () => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Gets admin reviewer list.
     const response = await api.get('/auth/admins', {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -154,9 +202,11 @@ export const fetchAdminReviewers = async () => {
 // Prepares approve role request.
 export const approveRoleRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Approves role request.
     const response = await api.post(`/auth/role-requests/${requestId}/approve`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -172,9 +222,11 @@ export const approveRoleRequest = async (requestId) => {
 // Prepares reject role request.
 export const rejectRoleRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Rejects role request.
     const response = await api.post(`/auth/role-requests/${requestId}/reject`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -190,9 +242,11 @@ export const rejectRoleRequest = async (requestId) => {
 // Coordinates submit reactivation request behavior.
 export const submitReactivationRequest = async (message) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Sends reactivation request.
     const response = await api.post(
       '/auth/reactivation-request',
       { message },
@@ -209,9 +263,11 @@ export const submitReactivationRequest = async (message) => {
 
 // Gets my reactivation requests data.
 export const fetchMyReactivationRequests = async () => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
 
+  // Gets user's reactivation requests.
   const response = await api.get('/auth/reactivation-requests/me', {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -220,9 +276,11 @@ export const fetchMyReactivationRequests = async () => {
 
 // Gets pending reactivation requests data.
 export const fetchPendingReactivationRequests = async () => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
 
+  // Gets pending reactivation requests.
   const response = await api.get('/auth/reactivation-requests/pending', {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -232,9 +290,11 @@ export const fetchPendingReactivationRequests = async () => {
 // Prepares approve reactivation request.
 export const approveReactivationRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Approves reactivation request.
     const response = await api.post(`/auth/reactivation-requests/${requestId}/approve`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -250,9 +310,11 @@ export const approveReactivationRequest = async (requestId) => {
 // Prepares reject reactivation request.
 export const rejectReactivationRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Rejects reactivation request.
     const response = await api.post(`/auth/reactivation-requests/${requestId}/reject`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -268,9 +330,11 @@ export const rejectReactivationRequest = async (requestId) => {
 // Coordinates submit reinstatement request behavior.
 export const submitReinstatementRequest = async (message) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Sends reinstatement request.
     const response = await api.post(
       '/auth/reinstatement-request',
       { message },
@@ -287,9 +351,11 @@ export const submitReinstatementRequest = async (message) => {
 
 // Gets my reinstatement requests data.
 export const fetchMyReinstatementRequests = async () => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
 
+  // Gets user's reinstatement requests.
   const response = await api.get('/auth/reinstatement-requests/me', {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -298,9 +364,11 @@ export const fetchMyReinstatementRequests = async () => {
 
 // Gets reinstatement requests data.
 export const fetchReinstatementRequests = async () => {
+  // Gets saved login token.
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Not authenticated');
 
+  // Gets all reinstatement requests.
   const response = await api.get('/auth/reinstatement-requests', {
     headers: { Authorization: `Bearer ${token}` }
   });
@@ -310,9 +378,11 @@ export const fetchReinstatementRequests = async () => {
 // Prepares approve reinstatement request.
 export const approveReinstatementRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Approves reinstatement request.
     const response = await api.post(`/auth/reinstatement-requests/${requestId}/approve`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -328,9 +398,11 @@ export const approveReinstatementRequest = async (requestId) => {
 // Prepares reject reinstatement request.
 export const rejectReinstatementRequest = async (requestId) => {
   try {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
 
+    // Rejects reinstatement request.
     const response = await api.post(`/auth/reinstatement-requests/${requestId}/reject`, null, {
       headers: { Authorization: `Bearer ${token}` }
     });

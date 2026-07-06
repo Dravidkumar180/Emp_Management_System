@@ -14,27 +14,41 @@ const formatDate = (value) => (value ? new Date(value).toLocaleString() : '-');
 
 // Shows the account suspended component.
 const AccountSuspended = () => {
+  // Gets auth actions and user.
   const { user, logout, refreshUser } = useAuth();
+  // Helps move to another page.
   const navigate = useNavigate();
+  // Stores current page mode.
   const [mode, setMode] = useState('summary');
+  // Stores message typed by user.
   const [message, setMessage] = useState('');
+  // Stores old reinstatement requests.
   const [requests, setRequests] = useState([]);
+  // Tracks request loading state.
   const [loading, setLoading] = useState(true);
+  // Tracks form sending state.
   const [submitting, setSubmitting] = useState(false);
+  // Stores success or error message.
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Gets requests data.
+  // Loads reinstatement request history.
   const loadRequests = async () => {
     try {
+      // Starts loading request data.
       setLoading(true);
+      // Gets requests from server.
       const data = await fetchMyReinstatementRequests();
+      // Saves requests in state.
       setRequests(data);
+      // Refreshes user after approval.
       if (data[0]?.status === 'approved') {
         await refreshUser();
       }
     } catch (error) {
+      // Shows request loading error.
       setStatusMessage(error.response?.data?.detail || 'Unable to load request status.');
     } finally {
+      // Stops loading request data.
       setLoading(false);
     }
   };
@@ -63,19 +77,28 @@ const AccountSuspended = () => {
     ? 2
     : 1;
 
-  // Handles submit actions.
+  // Handles reinstatement form submit.
   const handleSubmit = async (event) => {
+    // Stops page from refreshing.
     event.preventDefault();
     try {
+      // Starts sending request.
       setSubmitting(true);
+      // Clears old status message.
       setStatusMessage('');
+      // Sends request to server.
       await submitReinstatementRequest(message);
+      // Clears message input box.
       setMessage('');
+      // Shows successful request message.
       setStatusMessage('Your reinstatement request has been submitted.');
+      // Reloads request history.
       await loadRequests();
     } catch (error) {
+      // Shows request submit error.
       setStatusMessage(error.response?.data?.detail || 'Unable to submit reinstatement request.');
     } finally {
+      // Stops sending request.
       setSubmitting(false);
     }
   };

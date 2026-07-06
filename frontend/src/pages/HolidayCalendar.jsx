@@ -40,9 +40,18 @@ const daysBetween = (dateValue) => {
   return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 };
 
+// Gets the next visible date for a recurring holiday.
+const getDisplayDate = (holiday) => {
+  if (!holiday.recurring || holiday.date >= todayKey()) return holiday.date;
+  const nextDate = `${new Date().getFullYear()}-${getMonthValue(holiday.date)}-${String(holiday.date).slice(8, 10)}`;
+  if (nextDate >= todayKey()) return nextDate;
+  return `${new Date().getFullYear() + 1}-${getMonthValue(holiday.date)}-${String(holiday.date).slice(8, 10)}`;
+};
+
 // Shows the holiday calendar component.
 const HolidayCalendar = () => {
   const { user } = useAuth();
+  const isUser = user?.role === 'user';
   const companyId = normalizeCompanyId(user?.companyId || user?.company_id);
   const companyName = getCompanyName(companyId);
   const [holidays, setHolidays] = useState([]);
@@ -114,9 +123,16 @@ const HolidayCalendar = () => {
   });
   // Prepares past holidays.
   const pastHolidays = holidays.filter((holiday) => holiday.date < todayKey());
-  const listHolidays = (listTab === 'upcoming' ? upcomingHolidays : pastHolidays)
+  const userUpcomingHolidays = holidays
+    .map((holiday) => ({ ...holiday, displayDate: getDisplayDate(holiday) }))
+    .filter((holiday) => holiday.displayDate >= todayKey())
+    .sort((a, b) => a.displayDate.localeCompare(b.displayDate));
+  const userPastHolidays = pastHolidays
+    .map((holiday) => ({ ...holiday, displayDate: holiday.date }))
+    .sort((a, b) => b.displayDate.localeCompare(a.displayDate));
+  const listHolidays = (listTab === 'upcoming' ? userUpcomingHolidays : userPastHolidays)
     .filter((holiday) => typeFilter === 'All Types' || holiday.type === typeFilter)
-    .slice(0, 5);
+    .slice(0, isUser ? 12 : 5);
 
   // Prepares recurring count.
   const recurringCount = holidays.filter((holiday) => holiday.recurring).length;
@@ -125,30 +141,38 @@ const HolidayCalendar = () => {
   const dateRangeLabel = yearFilter === 'All Years'
     ? '01 Jan 2026 - 31 Dec 2026'
     : `01 Jan ${yearFilter} - 31 Dec ${yearFilter}`;
-  const recurringPreview = (editingHoliday || { ...formData, date: formData.date || '2026-01-26', name: formData.name || 'Republic Day' });
   // Prepares calendar holidays.
   const calendarHolidays = holidays.filter((holiday) => (
     getYearValue(holiday.date) === calendarYear && getMonthValue(holiday.date) === calendarMonth
   ));
-  // Prepares calendar days.
+  // Builds calendar days.
   const calendarDays = useMemo(() => {
+    // Gets month start.
     const firstDay = new Date(`${calendarYear}-${calendarMonth}-01T00:00:00`);
+    // Finds first weekday.
     const startOffset = firstDay.getDay();
+    // Counts month days.
     const daysInMonth = new Date(Number(calendarYear), Number(calendarMonth), 0).getDate();
+    // Counts previous days.
     const previousMonthDays = new Date(Number(calendarYear), Number(calendarMonth) - 1, 0).getDate();
     return Array.from({ length: 42 }, (_, index) => {
+      // Gets day number.
       const dayNumber = index - startOffset + 1;
+      // Checks current month.
       const currentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+      // Shows calendar label.
       const label = currentMonth
         ? dayNumber
         : dayNumber < 1
           ? previousMonthDays + dayNumber
           : dayNumber - daysInMonth;
+      // Builds date key.
       const date = currentMonth ? `${calendarYear}-${calendarMonth}-${String(dayNumber).padStart(2, '0')}` : null;
       return {
         label,
         currentMonth,
         date,
+        // Adds holidays for date.
         holidays: date ? calendarHolidays.filter((holiday) => holiday.date === date) : [],
       };
     });
@@ -185,38 +209,95 @@ const HolidayCalendar = () => {
     setFormErrors({});
   };
 
-  // Handles save holiday actions.
+  // Saves holiday changes.
   const handleSaveHoliday = async () => {
+    // Builds holiday data.
     const holidayPayload = { ...formData, companyId };
+    // Checks form errors.
     const errors = validateHoliday(holidayPayload, editingHoliday?.id || null);
     setFormErrors(errors);
+    // Stops invalid save.
     if (Object.keys(errors).length > 0) {
       toast.error(errors.duplicate || 'Please complete the required holiday fields.');
       return;
     }
 
     try {
+      // Saves holiday data.
       await saveHoliday(holidayPayload, user, editingHoliday);
+      // Reloads holiday list.
       await loadHolidays();
+      // Closes holiday form.
       closeFormModal();
+      // Shows save success.
       toast.success(editingHoliday ? 'Holiday updated successfully!' : 'Holiday created successfully!');
     } catch (error) {
+      // Shows save error.
       toast.error(error.response?.data?.detail || 'Failed to save holiday');
     }
   };
 
-  // Handles delete holiday actions.
+  // Deletes selected holiday.
   const handleDeleteHoliday = async () => {
+    // Stops without holiday.
     if (!deletingHoliday) return;
     try {
+      // Deletes holiday data.
       await deleteHoliday(deletingHoliday, user);
+      // Reloads holiday list.
       await loadHolidays();
+      // Closes delete modal.
       setDeletingHoliday(null);
+      // Shows delete success.
       toast.success('Holiday deleted successfully!');
     } catch (error) {
+      // Shows delete error.
       toast.error(error.response?.data?.detail || 'Failed to delete holiday');
     }
   };
+
+  if (isUser) {
+    return (
+      <div className="holiday-page holiday-user-page">
+        <Toaster position="top-right" />
+
+        <div className="holiday-header">
+          <div>
+            <h1>Holiday Calendar</h1>
+            <p>View upcoming and past holidays for {companyName}.</p>
+          </div>
+        </div>
+
+        <section className="holiday-list-card user-holiday-list-card">
+          <div className="holiday-tabs">
+            <button className={listTab === 'upcoming' ? 'active' : ''} onClick={() => setListTab('upcoming')}>Upcoming Holidays</button>
+            <button className={listTab === 'past' ? 'active' : ''} onClick={() => setListTab('past')}>Past Holidays</button>
+          </div>
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option>All Types</option>
+            {HOLIDAY_TYPES.map((type) => <option key={type}>{type}</option>)}
+          </select>
+          <div className="holiday-list-items">
+            {listHolidays.length === 0 ? (
+              <div className="holiday-empty">No {listTab} holidays found.</div>
+            ) : (
+              listHolidays.map((holiday) => (
+                <div key={`${holiday.id}-${holiday.displayDate}`} className="holiday-list-item user-holiday-list-item">
+                  <div>
+                    <i className={holiday.type.toLowerCase().replace(/\s+/g, '-')}></i>
+                    <span>{formatHolidayDate(holiday.displayDate)}</span>
+                    <strong>{holiday.name}</strong>
+                  </div>
+                  <span className={`holiday-type ${holiday.type.toLowerCase().replace(/\s+/g, '-')}`}>{holiday.type}</span>
+                  {listTab === 'upcoming' && <small>In {Math.max(0, daysBetween(holiday.displayDate))} days</small>}
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="holiday-page">
@@ -405,50 +486,17 @@ const HolidayCalendar = () => {
         </div>
       </section>
 
-      <section className="holiday-insights">
-        <div>
-          <h2>Duplicate Holiday Validation</h2>
-          <div className="holiday-validation-box">
-            <strong>Other Validations</strong>
-            <span>Holiday name is mandatory.</span>
-            <span>Holiday date is mandatory.</span>
-            <span>Duplicate holidays on the same date are not allowed for the same company.</span>
-            <span>Recurring holidays will be applied automatically every year.</span>
-          </div>
-        </div>
-        <div>
-          <h2>Recurring Holiday Setup</h2>
-          <div className="recurring-preview">
-            <label>Holiday Name<input value={recurringPreview.name || ''} readOnly /></label>
-            <label>Date<input value={recurringPreview.date ? formatHolidayDate(recurringPreview.date).replace(/ 2026$/, '') : ''} readOnly /></label>
-            <label className="holiday-checkbox"><input type="checkbox" checked={Boolean(recurringPreview.recurring)} readOnly /><span>Yes, repeat every year</span></label>
-            <p>This holiday will be automatically applied every year.</p>
-          </div>
-        </div>
-        <div>
-          <h2>Auto Applied Years</h2>
-          <table className="applied-years-table">
-            <tbody>
-              {[2026, 2027, 2028, 2029, 2030].map((year) => (
-                <tr key={year}>
-                  <td>{year}</td>
-                  <td>{recurringPreview.date ? formatHolidayDate(`${year}-${getMonthValue(recurringPreview.date)}-${String(recurringPreview.date).slice(8, 10)}`).replace(` ${year}`, ` ${year}`) : '-'}</td>
-                  <td><span className="holiday-status">Applied</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
+      {/* Shows holiday form modal. */}
       {showFormModal && (
         <div className="holiday-modal-overlay" onClick={closeFormModal}>
           <div className="holiday-modal" onClick={(e) => e.stopPropagation()}>
             <div className="holiday-modal-header">
+              {/* Shows create or edit title. */}
               <h2>{editingHoliday ? 'Edit Holiday' : 'Create New Holiday'}</h2>
               <button onClick={closeFormModal}>x</button>
             </div>
             <div className="holiday-form">
+              {/* Shows duplicate error. */}
               {formErrors.duplicate && <div className="holiday-error-box">{formErrors.duplicate}</div>}
               <label>
                 <span>Holiday Name *</span>
@@ -469,6 +517,7 @@ const HolidayCalendar = () => {
                 {formErrors.type && <small>{formErrors.type}</small>}
               </label>
               <label className="holiday-checkbox">
+                {/* Toggles yearly repeat. */}
                 <input type="checkbox" checked={formData.recurring} onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })} />
                 <span>Yes, repeat every year</span>
               </label>
@@ -482,6 +531,7 @@ const HolidayCalendar = () => {
                   <option>{companyName}</option>
                 </select>
               </label>
+              {/* Shows status while editing. */}
               {editingHoliday && (
                 <label>
                   <span>Status *</span>
@@ -493,12 +543,14 @@ const HolidayCalendar = () => {
             </div>
             <div className="holiday-modal-footer">
               <button className="holiday-secondary-btn" onClick={closeFormModal}>Cancel</button>
+              {/* Saves created or edited holiday. */}
               <button className="holiday-primary-btn" onClick={handleSaveHoliday}>{editingHoliday ? 'Update Holiday' : 'Create Holiday'}</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Shows delete confirmation modal. */}
       {deletingHoliday && (
         <div className="holiday-modal-overlay" onClick={() => setDeletingHoliday(null)}>
           <div className="holiday-delete-modal" onClick={(e) => e.stopPropagation()}>
@@ -508,6 +560,7 @@ const HolidayCalendar = () => {
             <span>This action will immediately remove the holiday and update attendance calculations.</span>
             <div className="holiday-modal-footer">
               <button className="holiday-secondary-btn" onClick={() => setDeletingHoliday(null)}>Cancel</button>
+              {/* Confirms holiday delete. */}
               <button className="holiday-danger-btn" onClick={handleDeleteHoliday}>Delete Holiday</button>
             </div>
           </div>

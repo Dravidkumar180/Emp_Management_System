@@ -77,21 +77,32 @@ const normalizeHistory = (record) => {
 
 // Shows the tracking component.
 const Tracking = () => {
+  // Gets logged-in user.
   const { user } = useAuth();
+  // Gets user company.
   const userCompanyId = normalizeCompanyId(user?.companyId || user?.company_id);
+  // Allows super admin switch.
   const canSwitchCompany = user?.role === 'super_admin';
+  // Stores selected company.
   const [activeCompanyId, setActiveCompanyId] = useState(userCompanyId);
+  // Stores activity records.
   const [records, setRecords] = useState([]);
+  // Stores search text.
   const [searchTerm, setSearchTerm] = useState('');
+  // Stores selected tab.
   const [activityTab, setActivityTab] = useState('activity');
+  // Tracks loading state.
   const [loading, setLoading] = useState(true);
 
   // Runs when this screen needs to update data.
   useEffect(() => {
     // Gets activity data.
     const loadActivity = () => {
+      // Starts loading activity.
       setLoading(true);
+      // Loads account history.
       setRecords(ensureLegacyAccountHistory());
+      // Stops loading activity.
       setLoading(false);
     };
 
@@ -100,6 +111,7 @@ const Tracking = () => {
 
   // Runs when this screen needs to update data.
   useEffect(() => {
+    // Locks company for normal users.
     if (!canSwitchCompany) {
       setActiveCompanyId(userCompanyId);
     }
@@ -113,9 +125,12 @@ const Tracking = () => {
   // Prepares company records.
   const companyRecords = useMemo(() => (
     records
+      // Keeps only account records.
       .filter((record) => record.source === 'account' || !record.department)
+      // Filters by selected company.
       .filter((record) => normalizeCompanyId(record.companyId) === activeCompanyId)
       .map((record) => {
+        // Builds full activity history.
         const history = normalizeHistory(record);
         // Prepares login events.
         const loginEvents = history.filter((item) => item.type === 'login');
@@ -131,11 +146,13 @@ const Tracking = () => {
         };
       })
       .filter((record) => {
+        // Applies search filter.
         const search = searchTerm.trim().toLowerCase();
         if (!search) return true;
         return [record.name, record.email, getRoleLabel(record.role), record.browser, record.ipAddress]
           .some((value) => String(value || '').toLowerCase().includes(search));
       })
+      // Shows latest login first.
       .sort((a, b) => new Date(b.lastLogin || 0) - new Date(a.lastLogin || 0))
   ), [activeCompanyId, records, searchTerm]);
 
@@ -158,6 +175,7 @@ const Tracking = () => {
   // Prepares new IP count.
   const newIpCount = companyRecords.filter((record) => hasChangedValue(record.history, 'ipAddress')).length;
 
+  // Builds top summary cards.
   const summary = [
     { label: 'Total Logins', value: loginHistory.length, accent: 'blue' },
     { label: 'Total Logouts', value: logoutHistory.length, accent: 'green' },
@@ -165,8 +183,10 @@ const Tracking = () => {
     { label: 'New IP Addresses', value: newIpCount, accent: 'orange' },
   ];
 
+  // Shows login or logout list.
   const visibleHistory = activityTab === 'login' ? loginHistory : logoutHistory;
 
+  // Shows loading screen.
   if (loading) {
     return (
       <div className="tracking-loading">
@@ -195,6 +215,7 @@ const Tracking = () => {
         </div>
 
         <div className="tracking-summary">
+          {/* Shows summary cards. */}
           {summary.map((item) => (
             <div className={`tracking-stat stat-${item.accent}`} key={item.label}>
               <span>{item.label}</span>
@@ -206,6 +227,7 @@ const Tracking = () => {
 
       <section className="tracking-panel">
         <div className="tracking-tabs">
+          {/* Switches tracking views. */}
           <button type="button" className={activityTab === 'activity' ? 'active' : ''} onClick={() => setActivityTab('activity')}>
             User Activity
           </button>
@@ -219,6 +241,7 @@ const Tracking = () => {
 
         <div className="tracking-filters">
           <div className="tracking-search">
+            {/* Searches activity records. */}
             <input
               type="search"
               placeholder="Search by name, email, browser, or IP..."
@@ -232,6 +255,7 @@ const Tracking = () => {
           </div>
 
           <div className="tracking-company-tabs" aria-label="Company filter">
+            {/* Filters by company. */}
             {companyOptions.map((company) => (
               <button
                 type="button"
@@ -245,6 +269,7 @@ const Tracking = () => {
           </div>
         </div>
 
+        {/* Shows user activity table. */}
         {activityTab === 'activity' && (
           <div className="tracking-table-wrap">
             <table className="tracking-table">
@@ -265,6 +290,7 @@ const Tracking = () => {
                 </tr>
               </thead>
               <tbody>
+                {/* Shows empty activity message. */}
                 {companyRecords.length === 0 ? (
                   <tr>
                     <td colSpan="12">
@@ -272,6 +298,7 @@ const Tracking = () => {
                     </td>
                   </tr>
                 ) : companyRecords.map((record) => (
+                  // Shows one user activity row.
                   <tr key={record.id}>
                     <td>
                       <div className="tracking-user">
@@ -300,13 +327,16 @@ const Tracking = () => {
           </div>
         )}
 
+        {/* Shows login or logout history. */}
         {(activityTab === 'login' || activityTab === 'logout') && (
           <div className="tracking-history-list">
+            {/* Shows empty history message. */}
             {visibleHistory.length === 0 ? (
               <div className="tracking-empty">
                 No {activityTab === 'login' ? 'login' : 'logout'} history has been recorded for {activeCompany.name} yet.
               </div>
             ) : visibleHistory.map((item, index) => (
+              // Shows one history item.
               <div className="tracking-history-item" key={`${item.email}-${item.timestamp}-${index}`}>
                 <span className={`history-dot ${item.type}`} />
                 <div>

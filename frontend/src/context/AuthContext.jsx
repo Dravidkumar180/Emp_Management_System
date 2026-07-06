@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { loginUser, registerUser, getCurrentUser } from '../services/auth';
 import { recordLoginActivity, recordLogoutActivity, recordSignupActivity } from '../services/activityTracking';
 import { logAuditAction } from '../services/audit';
+import { clearCurrentSession, fetchMyLoginDevices, logoutDevice, saveCurrentSession, updateSessionActivity } from '../services/loginDevices';
 import { createNotificationForUser, useNotifications } from './NotificationContext';
 
 const AuthContext = createContext();
@@ -61,35 +62,72 @@ export const AuthProvider = ({ children }) => {
 
   // Runs when this screen needs to update data.
   useEffect(() => {
-    // Prepares check auth.
+    // Checks saved login on start.
     const checkAuth = async () => {
+      // Gets saved login token.
       const token = localStorage.getItem('token');
+      // Runs only when token exists.
       if (token) {
+        // Gets current user from server.
         const userData = await getCurrentUser(token);
+        // Saves user when token works.
         if (userData) {
           const userWithCompany = withCompany(userData, userData.email);
           setUser(userWithCompany);
           localStorage.setItem('user', JSON.stringify(userWithCompany));
         } else {
+          // Clears bad saved login data.
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
       }
+      // Stops showing loading screen.
       setLoading(false);
     };
+    // Starts checking saved login.
     checkAuth();
   }, []);
 
-  // Prepares login.
+  // Keeps current login device session active and catches revoked sessions.
+  useEffect(() => {
+    if (!user) return undefined;
+    const validateSession = async () => {
+      try {
+        await updateSessionActivity();
+      } catch (error) {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          clearCurrentSession();
+          setUser(null);
+        }
+      }
+    };
+    validateSession();
+    const intervalId = window.setInterval(validateSession, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [user]);
+
+  // Handles user login request.
   const login = async (email, password, companyId) => {
     try {
+      // Sends login details to server.
       const response = await loginUser(email, password, companyId || getSavedUserCompany(email));
+      // Checks login response token.
       if (response && response.access_token) {
+        // Adds company to user data.
         const userWithCompany = withCompany(response.user, email);
+        // Saves token in browser.
         localStorage.setItem('token', response.access_token);
+        // Saves current login device session.
+        saveCurrentSession(response.session);
+        // Saves user in browser.
         localStorage.setItem('user', JSON.stringify(userWithCompany));
+        // Updates current logged-in user.
         setUser(userWithCompany);
+        // Records login activity details.
         const activity = await recordLoginActivity(userWithCompany);
+        // Saves login in audit log.
         await logAuditAction({
           action: 'User Login',
           entityType: 'account',
@@ -98,31 +136,41 @@ export const AuthProvider = ({ children }) => {
           details: `${userWithCompany.name || userWithCompany.email} logged in`,
           newValue: activity,
         });
+        // Creates login notification for user.
         createNotificationForUser(userWithCompany, {
           type: 'success',
           title: 'Login Recorded',
           message: `${userWithCompany.name || userWithCompany.email} logged in`,
           category: 'account-activity',
         });
+        // Updates notifications for new user.
         refreshNotificationScope();
+        // Returns successful login result.
         return { success: true, user: userWithCompany };
       }
+      // Returns invalid login message.
       return { success: false, error: 'Invalid credentials' };
     } catch (error) {
+      // Returns server login error.
       return { success: false, error: error.response?.data?.detail || 'Login failed' };
     }
   };
 
-  // Prepares register.
+  // Handles new user registration.
   const register = async (name, email, password, role = 'user', companyId = 'company-a', inviteToken = null) => {
     try {
+      // Sends signup details to server.
       const response = await registerUser(name, email, password, role, companyId, inviteToken);
+      // Checks signup response user data.
       if (response && response.user) {
+        // Saves company for this user.
         saveUserCompany(email, companyId);
-        // Auto login after registration
+        // Logs in after successful signup.
         const loginResult = await login(email, password, companyId);
+        // Records signup when login works.
         if (loginResult.success) {
           const signupActivity = await recordSignupActivity(loginResult.user);
+          // Saves signup in audit log.
           await logAuditAction({
             action: 'User Signup',
             entityType: 'account',
@@ -131,26 +179,34 @@ export const AuthProvider = ({ children }) => {
             details: `${loginResult.user.name || loginResult.user.email} signed up as ${loginResult.user.role || role}`,
             newValue: signupActivity,
           });
+          // Creates signup notification for user.
           createNotificationForUser(loginResult.user, {
             type: 'success',
             title: 'Signup Recorded',
             message: `${loginResult.user.name || loginResult.user.email} signed up`,
             category: 'account-activity',
           });
+          // Updates notifications after signup.
           refreshNotificationScope();
         }
+        // Returns signup login result.
         return loginResult;
       }
+      // Returns registration failed message.
       return { success: false, error: 'Registration failed' };
     } catch (error) {
+      // Returns server signup error.
       return { success: false, error: error.response?.data?.detail || 'Registration failed' };
     }
   };
 
-  // Prepares logout.
-  const logout = () => {
+  // Handles user logout request.
+  const logout = async () => {
+    // Gets current or saved user.
     const savedUser = user || JSON.parse(localStorage.getItem('user') || 'null');
+    // Records logout activity details.
     const activity = recordLogoutActivity(savedUser);
+    // Saves logout in audit log.
     logAuditAction({
       action: 'User Logout',
       entityType: 'account',
@@ -159,26 +215,51 @@ export const AuthProvider = ({ children }) => {
       details: `${savedUser?.name || savedUser?.email || 'User'} logged out`,
       newValue: activity,
     });
+    // Creates logout notification for user.
     createNotificationForUser(savedUser, {
       type: 'info',
       title: 'Logout Recorded',
       message: `${savedUser?.name || savedUser?.email || 'User'} logged out`,
       category: 'account-activity',
     });
+    try {
+      const currentSessionIdentifier = localStorage.getItem('currentSessionId');
+      if (currentSessionIdentifier) {
+        // Finds current session record before clearing auth.
+        const sessions = await fetchMyLoginDevices();
+        const currentSession = sessions.find((session) => session.session_identifier === currentSessionIdentifier);
+        if (currentSession) await logoutDevice(currentSession.id);
+      }
+    } catch (error) {
+      console.error('Unable to mark device session as logged out:', error);
+    }
+    // Removes saved login token.
     localStorage.removeItem('token');
+    // Removes current session id.
+    clearCurrentSession();
+    // Removes saved user data.
     localStorage.removeItem('user');
+    // Clears current logged-in user.
     setUser(null);
   };
 
-  // Prepares refresh user.
+  // Refreshes current user data.
   const refreshUser = useCallback(async () => {
+    // Gets saved login token.
     const token = localStorage.getItem('token');
+    // Stops if token is missing.
     if (!token) return null;
+    // Gets latest user from server.
     const userData = await getCurrentUser(token);
+    // Stops if user is missing.
     if (!userData) return null;
+    // Adds company to user data.
     const userWithCompany = withCompany(userData, userData.email);
+    // Saves updated user in browser.
     localStorage.setItem('user', JSON.stringify(userWithCompany));
+    // Updates current logged-in user.
     setUser(userWithCompany);
+    // Returns latest user data.
     return userWithCompany;
   }, []);
 

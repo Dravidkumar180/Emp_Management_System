@@ -4,18 +4,21 @@ import './StatusBadge.css';
 
 // Shows the status badge component.
 const StatusBadge = ({ status }) => {
-  // Gets status class data.
+  // Finds style class for status.
   const getStatusClass = () => {
+    // Checks status text in lowercase.
     switch(status?.toLowerCase()) {
       case 'active': return 'status-active';
       case 'on leave': return 'status-leave';
       case 'remote': return 'status-remote';
       case 'inactive': return 'status-inactive';
+      // Uses active style as default.
       default: return 'status-active';
     }
   };
 
   return (
+    // Shows status with correct style.
     <span className={`status-badge ${getStatusClass()}`}>
       {status}
     </span>
