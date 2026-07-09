@@ -66,6 +66,17 @@ const Sidebar = () => {
       ),
       roles: ['admin', 'user']
     },
+    {
+      path: '/skills-certifications',
+      name: 'Skills & Certifications',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 3L14.4 7.86L19.76 8.64L15.88 12.42L16.8 17.76L12 15.24L7.2 17.76L8.12 12.42L4.24 8.64L9.6 7.86L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+          <path d="M5 21H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
+      roles: ['admin', 'user']
+    },
     { 
       path: '/departments', 
       name: 'Departments', 

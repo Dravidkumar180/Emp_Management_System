@@ -11,6 +11,7 @@ import {
   fetchPendingReactivationRequests,
   fetchReinstatementRequests,
 } from '../../services/auth';
+import { fetchCertificationExpiryNotifications } from '../../services/skillsCertifications';
 import { logAuditAction } from '../../services/audit';
 import { useEffect, useRef, useState } from 'react';
 import './Navbar.css';
@@ -381,6 +382,60 @@ const Navbar = ({ onSidebarToggle }) => {
 
     notifyReinstatementStatus();
     const interval = setInterval(notifyReinstatementStatus, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [addNotification, isAdmin, userCompanyId, userEmail]);
+
+  // Sends certification expiry notifications.
+  useEffect(() => {
+    if (!userEmail || isAdmin) {
+      return;
+    }
+
+    let active = true;
+    const seenStorageKey = `certificationExpiryNotifications:${userEmail}:${userCompanyId}`;
+
+    const getSeenNotifications = () => {
+      try {
+        return new Set(JSON.parse(localStorage.getItem(seenStorageKey) || '[]'));
+      } catch {
+        return new Set();
+      }
+    };
+
+    const saveSeenNotifications = (seen) => {
+      localStorage.setItem(seenStorageKey, JSON.stringify([...seen]));
+    };
+
+    const notifyCertificationExpiry = async () => {
+      try {
+        const expiryNotifications = await fetchCertificationExpiryNotifications();
+        if (!active) return;
+
+        const seen = getSeenNotifications();
+        let changed = false;
+        expiryNotifications.forEach((notification) => {
+          const seenKey = `${notification.certification_id}:${notification.status}`;
+          if (seen.has(seenKey)) return;
+          addNotification({
+            type: notification.status === 'expired' ? 'error' : 'warning',
+            title: notification.title,
+            message: notification.message,
+          });
+          seen.add(seenKey);
+          changed = true;
+        });
+        if (changed) saveSeenNotifications(seen);
+      } catch (error) {
+        console.error('Failed to load certification expiry notifications', error);
+      }
+    };
+
+    notifyCertificationExpiry();
+    const interval = setInterval(notifyCertificationExpiry, 30000);
 
     return () => {
       active = false;

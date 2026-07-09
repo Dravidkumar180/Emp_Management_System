@@ -1,5 +1,5 @@
 """Defines the database tables used by the app."""
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Float, UniqueConstraint
 from datetime import datetime
 from app.database.database import Base
 
@@ -249,6 +249,73 @@ class Notification(Base):
     read_at = Column(DateTime, nullable=True)
 
 
+class Skill(Base):
+    """Company-scoped skill catalog."""
+    __tablename__ = "skills"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("company_id", "name", name="uq_skill_company_name"),)
+
+
+class EmployeeSkill(Base):
+    """Stores skills selected by an employee."""
+    __tablename__ = "employee_skills"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True, index=True)
+    skill_id = Column(Integer, ForeignKey("skills.id"), nullable=False, index=True)
+    proficiency_level = Column(String(30), nullable=False)
+    years_experience = Column(Float, default=0)
+    is_primary = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("company_id", "user_id", "skill_id", name="uq_employee_skill"),)
+
+
+class Certification(Base):
+    """Company-scoped certification catalog."""
+    __tablename__ = "certifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    name = Column(String(160), nullable=False, index=True)
+    issuing_organization = Column(String(160), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "name", "issuing_organization", name="uq_cert_company_name_org"),
+    )
+
+
+class EmployeeCertification(Base):
+    """Stores certifications held by an employee."""
+    __tablename__ = "employee_certifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True, index=True)
+    certification_id = Column(Integer, ForeignKey("certifications.id"), nullable=False, index=True)
+    issue_date = Column(String(20), nullable=False)
+    expiry_date = Column(String(20), nullable=True)
+    document_name = Column(String(255), nullable=True)
+    document_type = Column(String(100), nullable=True)
+    document_data = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("company_id", "user_id", "certification_id", name="uq_employee_certification"),)
+
+
 # Helper function to get all table names (for debugging)
 def get_all_tables():
     """Returns all tables data."""
@@ -262,5 +329,9 @@ def get_all_tables():
         "reactivation_requests",
         "reinstatement_requests",
         "audit_logs",
-        "notifications"
+        "notifications",
+        "skills",
+        "employee_skills",
+        "certifications",
+        "employee_certifications"
     ]

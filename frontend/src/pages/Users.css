@@ -252,6 +252,11 @@
   min-width: 1040px;
 }
 
+.members-table th:nth-child(6),
+.members-table td:nth-child(6) {
+  min-width: 190px;
+}
+
 .reinstatement-table {
   min-width: 920px;
 }
@@ -283,6 +288,15 @@
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.members-card .row-actions {
+  flex-wrap: nowrap;
+}
+
+.members-card .row-actions .danger-action {
+  min-width: 86px;
+  justify-content: center;
 }
 
 .pending-card .row-actions {

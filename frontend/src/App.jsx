@@ -20,6 +20,7 @@ import Users from './pages/Users';
 import HolidayCalendar from './pages/HolidayCalendar';
 import LoginDevices from './pages/LoginDevices';
 import UserSessionMonitor from './pages/UserSessionMonitor';
+import SkillsCertifications from './pages/SkillsCertifications';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import AccountDeactivated from './pages/AccountDeactivated';
@@ -171,6 +172,15 @@ function App() {
               <ProtectedRoute allowedRoles={['admin', 'user']}>
                 <DashboardLayout>
                   <LoginDevices />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Skills and certifications page */}
+            <Route path="/skills-certifications" element={
+              <ProtectedRoute allowedRoles={['admin', 'user']}>
+                <DashboardLayout>
+                  <SkillsCertifications />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
